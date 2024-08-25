@@ -6,7 +6,7 @@
 <br />
 <div align="center">
   <a href="https://github.com/moritzstoetter/qt6purchasing">
-    <img src=" logo.png" alt="Logo" width="500" height="auto">
+    <img src="logo.png" alt="Logo" width="500" height="auto">
   </a>
 
   <h3 align="center">Qt6/QML In-App-Purchasing</h3>
