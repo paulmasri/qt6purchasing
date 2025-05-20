@@ -75,6 +75,11 @@ qt_add_library(qt6purchasing STATIC
         ${PLATFORM_HEADERS}
 )
 
+qt_add_qml_module(qt6purchasing
+    URI Qt6Purchasing
+    VERSION 1.0
+)
+
 target_include_directories(qt6purchasing
     PRIVATE
         ${PLATFORM_INCLUDE}
