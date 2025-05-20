@@ -9,6 +9,7 @@ class GooglePlayStoreBackend;
 class GooglePlayStoreProduct : public AbstractProduct
 {
     Q_OBJECT
+	QML_ELEMENT
 
 public:
     GooglePlayStoreProduct(QObject * parent = nullptr);

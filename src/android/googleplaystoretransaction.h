@@ -6,6 +6,8 @@
 class GooglePlayStoreTransaction : public AbstractTransaction
 {
     Q_OBJECT
+	QML_ELEMENT
+
 public:
     GooglePlayStoreTransaction(AbstractStoreBackend * store, QJsonObject json);
 

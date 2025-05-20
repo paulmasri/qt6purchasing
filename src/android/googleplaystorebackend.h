@@ -10,6 +10,7 @@
 class GooglePlayStoreBackend : public AbstractStoreBackend
 {
     Q_OBJECT
+	QML_ELEMENT
 
 public:
     enum BillingResponseCode {
