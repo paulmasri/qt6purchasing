@@ -13,6 +13,7 @@ qt_standard_project_setup()
 set(PLATFORM_LIBS "")
 set(PLATFORM_SOURCES "")
 set(PLATFORM_HEADERS "")
+set(PLATFORM_INCLUDE "")
 
 if(ANDROID)
     list(APPEND PLATFORM_SOURCES
@@ -25,6 +26,8 @@ if(ANDROID)
         android/googleplaystoreproduct.h
         android/googleplaystoretransaction.h
     )
+
+    set(PLATFORM_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR}/android)
 
     # Add .java file for visibility in Qt Creator (excluded from build process)
     add_custom_target(GooglePlayJavaSource
@@ -49,6 +52,8 @@ elseif(APPLE)
         apple/appleappstoreproduct.h
         apple/appleappstoretransaction.h
     )
+
+    set(PLATFORM_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR}/apple)
 endif()
 
 # The public-facing library
@@ -71,6 +76,8 @@ qt_add_library(qt6purchasing STATIC
 )
 
 target_include_directories(qt6purchasing
+    PRIVATE
+        ${PLATFORM_INCLUDE}
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
