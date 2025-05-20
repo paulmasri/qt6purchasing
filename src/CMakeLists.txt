@@ -22,7 +22,6 @@ if(ANDROID)
         android/googleplaystoretransaction.h
     )
 elseif(APPLE)
-    include_directories(/System/Library/Frameworks)
     find_library(FOUNDATIONLIB Foundation)
     find_library(STOREKITLIB StoreKit)
     set(PLATFORM_STORE_LIBS
