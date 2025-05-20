@@ -21,19 +21,24 @@ if(ANDROID)
         android/googleplaystoretransaction.cpp
     )
     list(APPEND PLATFORM_HEADERS
-        src/com/climbsmart/crimptronic/GooglePlayBilling.java
         android/googleplaystorebackend.h
         android/googleplaystoreproduct.h
         android/googleplaystoretransaction.h
     )
+
+    # Add .java file for visibility in Qt Creator (excluded from build process)
+    add_custom_target(GooglePlayJavaSource
+        SOURCES
+            android/GooglePlayBilling.java
+    )
 elseif(APPLE)
     find_library(FOUNDATIONLIB Foundation)
     find_library(STOREKITLIB StoreKit)
-
     list(APPEND PLATFORM_LIBS
         ${FOUNDATIONLIB}
         ${STOREKITLIB}
     )
+
     list(APPEND PLATFORM_SOURCES
         apple/appleappstorebackend.mm
         apple/appleappstoreproduct.mm
