@@ -8,7 +8,7 @@ Q_FORWARD_DECLARE_OBJC_CLASS(SKPaymentTransaction);
 class AppleAppStoreTransaction : public AbstractTransaction
 {
     Q_OBJECT
-	QML_ELEMENT
+    QML_NAMED_ELEMENT(Transaction)
 
 public:
     enum AppleAppStoreTransactionState {

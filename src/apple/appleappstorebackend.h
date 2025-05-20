@@ -8,7 +8,7 @@ Q_FORWARD_DECLARE_OBJC_CLASS(InAppPurchaseManager);
 class AppleAppStoreBackend : public AbstractStoreBackend
 {
     Q_OBJECT
-	QML_ELEMENT
+    QML_NAMED_ELEMENT(Store)
 
 public:
     AppleAppStoreBackend(QObject * parent = nullptr);
