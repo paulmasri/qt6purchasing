@@ -1,5 +1,5 @@
-#include "abstracttransaction.h"
-#include "abstractstorebackend.h"
+#include <qt6purchasing/abstractstorebackend.h>
+#include <qt6purchasing/abstracttransaction.h>
 #include <QJsonObject>
 
 AbstractTransaction::AbstractTransaction(AbstractStoreBackend * store, QString orderId) : QObject(),

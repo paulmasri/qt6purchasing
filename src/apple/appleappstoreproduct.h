@@ -1,7 +1,7 @@
 #ifndef APPLEAPPSTOREPRODUCT_H
 #define APPLEAPPSTOREPRODUCT_H
 
-#include "../abstractproduct.h"
+#include <qt6purchasing/abstractproduct.h>
 
 Q_FORWARD_DECLARE_OBJC_CLASS(SKProduct);
 

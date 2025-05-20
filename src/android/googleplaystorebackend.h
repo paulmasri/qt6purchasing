@@ -5,7 +5,7 @@
 #include <QCoreApplication>
 #include <QJniEnvironment>
 #include <QJniObject>
-#include "backend/store/abstractstorebackend.h"
+#include <qt6purchasing/abstractstorebackend.h>
 
 class GooglePlayStoreBackend : public AbstractStoreBackend
 {

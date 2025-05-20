@@ -1,7 +1,7 @@
 #ifndef APPLEAPPSTORETRANSACTION_H
 #define APPLEAPPSTORETRANSACTION_H
 
-#include "../abstracttransaction.h"
+#include <qt6purchasing/abstracttransaction.h>
 
 Q_FORWARD_DECLARE_OBJC_CLASS(SKPaymentTransaction);
 

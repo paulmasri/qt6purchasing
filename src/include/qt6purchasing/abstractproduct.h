@@ -2,7 +2,7 @@
 #define ABSTRACTPRODUCT_H
 
 #include <QObject>
-#include "abstractstorebackend.h"
+#include <qt6purchasing/abstractstorebackend.h>
 
 class AbstractTransaction;
 

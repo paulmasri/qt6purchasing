@@ -1,7 +1,7 @@
 #ifndef APPLEAPPSTOREBACKEND_H
 #define APPLEAPPSTOREBACKEND_H
 
-#include "../abstractstorebackend.h"
+#include <qt6purchasing/abstractstorebackend.h>
 
 Q_FORWARD_DECLARE_OBJC_CLASS(QT_MANGLE_NAMESPACE(InAppPurchaseManager));
 

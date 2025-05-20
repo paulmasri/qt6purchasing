@@ -2,7 +2,7 @@
 #define GOOGLEPLAYSTOREPRODUCT_H
 
 #include <QJsonObject>
-#include "../abstractproduct.h"
+#include <qt6purchasing/abstractproduct.h>
 
 class GooglePlayStoreBackend;
 
