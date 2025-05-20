@@ -1,7 +1,7 @@
 #ifndef GOOGLEPLAYSTORETRANSACTION_H
 #define GOOGLEPLAYSTORETRANSACTION_H
 
-#include "../abstracttransaction.h"
+#include <qt6purchasing/abstracttransaction.h>
 
 class GooglePlayStoreTransaction : public AbstractTransaction
 {

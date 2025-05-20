@@ -1,6 +1,6 @@
-#include "abstractstorebackend.h"
-#include "abstractproduct.h"
-#include "abstracttransaction.h"
+#include <qt6purchasing/abstractstorebackend.h>
+#include <qt6purchasing/abstractproduct.h>
+#include <qt6purchasing/abstracttransaction.h>
 
 AbstractStoreBackend * AbstractStoreBackend::_instance = nullptr;
 

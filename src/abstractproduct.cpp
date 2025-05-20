@@ -1,5 +1,5 @@
-#include "abstractproduct.h"
-#include "abstracttransaction.h"
+#include <qt6purchasing/abstractproduct.h>
+#include <qt6purchasing/abstracttransaction.h>
 
 AbstractProduct::AbstractProduct(QObject * parent) : QObject(parent)
 {
