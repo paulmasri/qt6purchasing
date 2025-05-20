@@ -47,20 +47,29 @@ elseif(APPLE)
 endif()
 
 # The public-facing library
-qt_add_library(qt6purchasing)
-target_include_directories(qt6purchasing PRIVATE ${CMAKE_SOURCE_DIR})
-target_sources(qt6purchasing
-    PRIVATE
-        abstractstorebackend.cpp
-        abstractproduct.cpp
-        abstracttransaction.cpp
+set(CORE_SOURCES
+    abstractproduct.cpp
+    abstractstorebackend.cpp
+    abstracttransaction.cpp
+)
+set(CORE_HEADERS
+    include/qt6purchasing/abstractproduct.h
+    include/qt6purchasing/abstractstorebackend.h
+    include/qt6purchasing/abstracttransaction.h
+)
+
+qt_add_library(qt6purchasing STATIC
+        ${CORE_SOURCES}
+        ${CORE_HEADERS}
         ${PLATFORM_SOURCES}
-    PUBLIC
-        abstractstorebackend.h
-        abstractproduct.h
-        abstracttransaction.h
         ${PLATFORM_HEADERS}
 )
+
+target_include_directories(qt6purchasing
+    PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
 target_link_libraries(qt6purchasing
     PRIVATE
         Qt6::Core
