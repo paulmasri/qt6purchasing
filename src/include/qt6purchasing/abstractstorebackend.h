@@ -3,6 +3,7 @@
 
 #include <QJsonDocument>
 #include <QObject>
+#include <QQmlEngine>
 #include <QQmlListProperty>
 
 class AbstractProduct;
@@ -11,6 +12,9 @@ class AbstractTransaction;
 class AbstractStoreBackend : public QObject
 {
     Q_OBJECT
+    QML_NAMED_ELEMENT(AbstractStoreBackend)
+    QML_UNCREATABLE("AbstractStoreBackend is an abstract base class")
+
     Q_PROPERTY(QQmlListProperty<AbstractProduct> productsQml READ productsQml)
     Q_CLASSINFO("DefaultProperty", "productsQml")
 
