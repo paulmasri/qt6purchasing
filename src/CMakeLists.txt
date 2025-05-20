@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(store LANGUAGES CXX)
+project(qt6purchasing LANGUAGES CXX)
 
 find_package(Qt6 6.8 REQUIRED COMPONENTS
     Core
@@ -42,9 +42,9 @@ elseif(APPLE)
     )
 endif()
 
-qt_add_library(store)
-target_include_directories(store PRIVATE ${CMAKE_SOURCE_DIR})
-target_sources(store
+qt_add_library(qt6purchasing)
+target_include_directories(qt6purchasing PRIVATE ${CMAKE_SOURCE_DIR})
+target_sources(qt6purchasing
     PRIVATE
         abstractstorebackend.cpp
         abstractproduct.cpp
@@ -56,7 +56,7 @@ target_sources(store
         abstracttransaction.h
         ${PLATFORM_STORE_HEADERS}
 )
-target_link_libraries(store
+target_link_libraries(qt6purchasing
     PRIVATE
         Qt6::Core
     PUBLIC
