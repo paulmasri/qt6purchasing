@@ -103,7 +103,7 @@ To add In-App-Purchasing capabilities to your Qt6/QML project follow the steps b
   ```sh
   git clone https://github.com/moritzstoetter/qt6purchasing.git
   ```
-2. Move 'android/GooglePlayBilling.java' to `QT_ANDROID_PACKAGE_SOURCE_DIR/src/com/COMPANY_NAME/APP_NAME/GooglePlayBilling.java`
+2. Copy 'android/GooglePlayBilling.java' to `QT_ANDROID_PACKAGE_SOURCE_DIR/src/com/COMPANY_NAME/APP_NAME/GooglePlayBilling.java`
   For more information on how to include custom Java-Code in your Android App see [Deploying an Application on Android](https://doc.qt.io/qt-6/deployment-android.html).
 3. Add the qt6purchasing Library to your Project. In your project's `CMakeLists.txt` add the following:
    ```cmake
