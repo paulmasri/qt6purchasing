@@ -1,12 +1,13 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.21)
 
-project(store)
+project(store LANGUAGES CXX)
 
-find_package(Qt6 COMPONENTS
+find_package(Qt6 6.8 REQUIRED COMPONENTS
     Core
     Qml
-    REQUIRED
 )
+
+qt_standard_project_setup()
 
 if(ANDROID)
     set(PLATFORM_STORE_SOURCES
@@ -41,7 +42,7 @@ elseif(APPLE)
     )
 endif()
 
-add_library(store)
+qt_add_library(store)
 target_include_directories(store PRIVATE ${CMAKE_SOURCE_DIR})
 target_sources(store
     PRIVATE
