@@ -8,6 +8,7 @@ Q_FORWARD_DECLARE_OBJC_CLASS(SKProduct);
 class AppleAppStoreProduct : public AbstractProduct
 {
     Q_OBJECT
+    QML_NAMED_ELEMENT(Product)
 
 public:
     AppleAppStoreProduct(QObject * parent = nullptr);

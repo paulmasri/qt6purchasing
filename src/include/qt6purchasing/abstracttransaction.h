@@ -3,12 +3,16 @@
 
 #include <QJsonObject>
 #include <QObject>
+#include <QQmlEngine>
 
 class AbstractStoreBackend;
 
 class AbstractTransaction : public QObject
 {
     Q_OBJECT
+    QML_NAMED_ELEMENT(AbstractTransaction)
+    QML_UNCREATABLE("AbstractTransaction is an abstract base class")
+
     Q_PROPERTY(int status READ status NOTIFY statusChanged)
     Q_PROPERTY(QString orderId READ orderId CONSTANT)
 
