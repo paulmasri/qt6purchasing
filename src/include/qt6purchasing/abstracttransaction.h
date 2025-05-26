@@ -32,7 +32,7 @@ public:
     Q_INVOKABLE void finalize();
 
 protected:
-    explicit AbstractTransaction(AbstractStoreBackend * store, QString orderId);
+    explicit AbstractTransaction(QString orderId, QObject * parent = nullptr);
     AbstractStoreBackend * _store = nullptr;
     int _status;
     QString _orderId;

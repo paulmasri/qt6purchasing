@@ -87,7 +87,7 @@
 {
     Q_UNUSED(queue);
     for (SKPaymentTransaction * transaction in transactions) {
-        AppleAppStoreTransaction * ta = new AppleAppStoreTransaction(backend, transaction);
+        AppleAppStoreTransaction * ta = new AppleAppStoreTransaction(transaction, backend);
 
         switch (static_cast<AppleAppStoreTransaction::AppleAppStoreTransactionState>(transaction.transactionState)) {
         case AppleAppStoreTransaction::Purchasing:

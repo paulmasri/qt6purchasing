@@ -19,7 +19,7 @@ public:
         Deferred
     };
     Q_ENUM(AppleAppStoreTransactionState)
-    AppleAppStoreTransaction(AbstractStoreBackend * store, SKPaymentTransaction * transaction);
+    AppleAppStoreTransaction(SKPaymentTransaction * transaction, QObject * parent = nullptr);
 
     QString productId() const override;
     SKPaymentTransaction * nativeTransaction() { return _nativeTransaction; }
