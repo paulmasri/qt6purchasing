@@ -110,7 +110,7 @@ To add In-App-Purchasing capabilities to your Qt6/QML project follow the steps b
    target_link_libraries(APP_TARGET
        PRIVATE
            ...
-           qt6purchasingplugin
+           qt6purchasinglibplugin
    )
    ```
 
