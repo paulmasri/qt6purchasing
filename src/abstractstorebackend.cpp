@@ -10,9 +10,8 @@ AbstractStoreBackend::AbstractStoreBackend(QObject * parent) : QObject(parent)
 
     qDebug() << "Creating store backend";
 
-    connect(this, &AbstractStoreBackend::connectedChanged, [this](bool connected) {
-        _connected = connected;
-        if (connected) {
+    connect(this, &AbstractStoreBackend::connectedChanged, [this]() {
+        if (isConnected()) {
             qDebug() << "Connected to store";
             qDebug() << "Found" << _products.size() << "product(s) awaiting registration";
             for (AbstractProduct * product : _products) {
@@ -58,6 +57,16 @@ AbstractStoreBackend::AbstractStoreBackend(QObject * parent) : QObject(parent)
             qCritical() << "Failed to map consumed purchase to a product!";
         }
     });
+}
+
+void AbstractStoreBackend::setConnected(bool connected)
+{
+    if (_connected == connected)
+        return;
+
+    _connected = connected;
+    emit connectedChanged();
+    qDebug() << "Store connection status changed to" << (_connected ? "connected" : "disconnected");
 }
 
 AbstractProduct * AbstractStoreBackend::product(const QString &identifier)

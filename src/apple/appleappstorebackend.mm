@@ -122,7 +122,7 @@ void AppleAppStoreBackend::startConnection()
             [InAppPurchaseManager alloc]
             initWithBackend:this
     ];
-    emit connectedChanged(true);
+    setConnected(_iapManager != nullptr);
 }
 
 void AppleAppStoreBackend::registerProduct(AbstractProduct * product)

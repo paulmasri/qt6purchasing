@@ -47,7 +47,7 @@ GooglePlayStoreBackend::GooglePlayStoreBackend(QObject * parent) : AbstractStore
 
 /*static*/ void GooglePlayStoreBackend::connectedChangedHelper(JNIEnv * env, jobject object, jboolean connected)
 {
-    emit GooglePlayStoreBackend::instance()->connectedChanged(connected);
+    GooglePlayStoreBackend::instance()->setConnected(connected);
 }
 
 void GooglePlayStoreBackend::startConnection()
