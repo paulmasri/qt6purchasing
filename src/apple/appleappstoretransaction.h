@@ -9,6 +9,7 @@ class AppleAppStoreTransaction : public AbstractTransaction
 {
     Q_OBJECT
     QML_NAMED_ELEMENT(Transaction)
+    QML_UNCREATABLE("Transactions are created by the store backend")
 
 public:
     enum AppleAppStoreTransactionState {
