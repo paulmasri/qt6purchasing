@@ -2,14 +2,11 @@
 #include <qt6purchasing/abstracttransaction.h>
 #include <QJsonObject>
 
-AbstractTransaction::AbstractTransaction(AbstractStoreBackend * store, QString orderId) : QObject(),
-    _store(store),
+AbstractTransaction::AbstractTransaction(QString orderId, QObject * parent) : QObject(parent),
     _orderId(orderId)
 {
-    if (this->thread() != _store->thread())
-        this->moveToThread(_store->thread());
-
-    this->setParent(_store);
+    _store = qobject_cast<AbstractStoreBackend*>(parent);
+    Q_ASSERT(_store);
 }
 
 void AbstractTransaction::finalize()

@@ -3,12 +3,13 @@
 
 #include <qt6purchasing/abstractstorebackend.h>
 
-Q_FORWARD_DECLARE_OBJC_CLASS(QT_MANGLE_NAMESPACE(InAppPurchaseManager));
-
-QT_BEGIN_NAMESPACE
+Q_FORWARD_DECLARE_OBJC_CLASS(InAppPurchaseManager);
 
 class AppleAppStoreBackend : public AbstractStoreBackend
 {
+    Q_OBJECT
+    QML_NAMED_ELEMENT(Store)
+
 public:
     AppleAppStoreBackend(QObject * parent = nullptr);
     ~AppleAppStoreBackend();
@@ -20,10 +21,8 @@ public:
 
 //    void emitProductRegistered(AbstractProduct * product);
 private:
-    QT_MANGLE_NAMESPACE(InAppPurchaseManager) * _iapManager = nullptr;
+    InAppPurchaseManager * _iapManager = nullptr;
 
 };
-
-QT_END_NAMESPACE
 
 #endif // APPLEAPPSTOREBACKEND_H

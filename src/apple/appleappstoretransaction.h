@@ -8,6 +8,9 @@ Q_FORWARD_DECLARE_OBJC_CLASS(SKPaymentTransaction);
 class AppleAppStoreTransaction : public AbstractTransaction
 {
     Q_OBJECT
+    QML_NAMED_ELEMENT(Transaction)
+    QML_UNCREATABLE("Transactions are created by the store backend")
+
 public:
     enum AppleAppStoreTransactionState {
         Purchasing,
@@ -17,7 +20,7 @@ public:
         Deferred
     };
     Q_ENUM(AppleAppStoreTransactionState)
-    AppleAppStoreTransaction(AbstractStoreBackend * store, SKPaymentTransaction * transaction);
+    AppleAppStoreTransaction(SKPaymentTransaction * transaction, QObject * parent = nullptr);
 
     QString productId() const override;
     SKPaymentTransaction * nativeTransaction() { return _nativeTransaction; }

@@ -1,6 +1,6 @@
 #include "googleplaystoretransaction.h"
 
-GooglePlayStoreTransaction::GooglePlayStoreTransaction(AbstractStoreBackend * store, QJsonObject json) : AbstractTransaction(store, json["orderId"].toString()),
+GooglePlayStoreTransaction::GooglePlayStoreTransaction(QJsonObject json, QObject * parent) : AbstractTransaction(json["orderId"].toString(), parent),
     _json(json)
 {}
 

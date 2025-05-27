@@ -7,7 +7,7 @@
 
 #import <StoreKit/StoreKit.h>
 
-@interface QT_MANGLE_NAMESPACE(InAppPurchaseManager) : NSObject <SKProductsRequestDelegate, SKPaymentTransactionObserver>
+@interface InAppPurchaseManager : NSObject <SKProductsRequestDelegate, SKPaymentTransactionObserver>
 {
     AppleAppStoreBackend * backend;
     NSMutableArray<SKPaymentTransaction *> *pendingTransactions;
@@ -17,7 +17,7 @@
 
 @end
 
-@implementation QT_MANGLE_NAMESPACE(InAppPurchaseManager)
+@implementation InAppPurchaseManager
 
 -(id)initWithBackend:(AppleAppStoreBackend *)iapBackend {
     if (self = [super init]) {
@@ -87,7 +87,7 @@
 {
     Q_UNUSED(queue);
     for (SKPaymentTransaction * transaction in transactions) {
-        AppleAppStoreTransaction * ta = new AppleAppStoreTransaction(backend, transaction);
+        AppleAppStoreTransaction * ta = new AppleAppStoreTransaction(transaction, backend);
 
         switch (static_cast<AppleAppStoreTransaction::AppleAppStoreTransactionState>(transaction.transactionState)) {
         case AppleAppStoreTransaction::Purchasing:
@@ -119,10 +119,10 @@ AppleAppStoreBackend::AppleAppStoreBackend(QObject * parent) : AbstractStoreBack
 void AppleAppStoreBackend::startConnection()
 {
     _iapManager = [
-            [QT_MANGLE_NAMESPACE(InAppPurchaseManager) alloc]
+            [InAppPurchaseManager alloc]
             initWithBackend:this
     ];
-    emit connectedChanged(true);
+    setConnected(_iapManager != nullptr);
 }
 
 void AppleAppStoreBackend::registerProduct(AbstractProduct * product)
