@@ -2,7 +2,7 @@
 
 #import <StoreKit/StoreKit.h>
 
-AppleAppStoreTransaction::AppleAppStoreTransaction(AbstractStoreBackend * store, SKPaymentTransaction * transaction) : AbstractTransaction(store, QString::fromNSString(transaction.transactionIdentifier)),
+AppleAppStoreTransaction::AppleAppStoreTransaction(SKPaymentTransaction * transaction, QObject * parent) : AbstractTransaction(QString::fromNSString(transaction.transactionIdentifier), parent),
     _nativeTransaction(transaction)
 {}
 

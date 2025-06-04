@@ -6,8 +6,11 @@
 class GooglePlayStoreTransaction : public AbstractTransaction
 {
     Q_OBJECT
+    QML_NAMED_ELEMENT(Transaction)
+    QML_UNCREATABLE("Transactions are created by the store backend")
+
 public:
-    GooglePlayStoreTransaction(AbstractStoreBackend * store, QJsonObject json);
+    GooglePlayStoreTransaction(QJsonObject json, QObject * parent = nullptr);
 
     QString productId() const override;
     QJsonObject json() const { return _json; }

@@ -47,7 +47,7 @@ GooglePlayStoreBackend::GooglePlayStoreBackend(QObject * parent) : AbstractStore
 
 /*static*/ void GooglePlayStoreBackend::connectedChangedHelper(JNIEnv * env, jobject object, jboolean connected)
 {
-    emit GooglePlayStoreBackend::instance()->connectedChanged(connected);
+    GooglePlayStoreBackend::instance()->setConnected(connected);
 }
 
 void GooglePlayStoreBackend::startConnection()
@@ -110,7 +110,7 @@ void GooglePlayStoreBackend::consumePurchase(AbstractTransaction * transaction)
 {
     QJsonObject json = QJsonDocument::fromJson(env->GetStringUTFChars(message, nullptr)).object();
 
-    GooglePlayStoreTransaction * transaction = new GooglePlayStoreTransaction(AbstractStoreBackend::instance(), json);
+    GooglePlayStoreTransaction * transaction = new GooglePlayStoreTransaction(json, AbstractStoreBackend::instance());
     emit GooglePlayStoreBackend::instance()->purchaseSucceeded(transaction);
 }
 
@@ -118,7 +118,7 @@ void GooglePlayStoreBackend::consumePurchase(AbstractTransaction * transaction)
 {
     QJsonObject json = QJsonDocument::fromJson(env->GetStringUTFChars(message, nullptr)).object();
 
-    GooglePlayStoreTransaction * transaction = new GooglePlayStoreTransaction(AbstractStoreBackend::instance(), json);
+    GooglePlayStoreTransaction * transaction = new GooglePlayStoreTransaction(json, AbstractStoreBackend::instance());
     emit GooglePlayStoreBackend::instance()->purchaseRestored(transaction);
 }
 
@@ -131,7 +131,7 @@ void GooglePlayStoreBackend::consumePurchase(AbstractTransaction * transaction)
 {
     QJsonObject json = QJsonDocument::fromJson(env->GetStringUTFChars(message, nullptr)).object();
 
-    GooglePlayStoreTransaction * transaction = new GooglePlayStoreTransaction(AbstractStoreBackend::instance(), json);
+    GooglePlayStoreTransaction * transaction = new GooglePlayStoreTransaction(json, AbstractStoreBackend::instance());
     emit GooglePlayStoreBackend::instance()->purchaseConsumed(transaction);
 }
 

@@ -93,7 +93,7 @@ To add In-App-Purchasing capabilities to your Qt6/QML project follow the steps b
 
 ### Prerequisites
 
-* Qt/QML 6
+* Qt/QML 6 (6.8 or higher)
 * Apple StoreKit
 * Android Billing Client
 
@@ -103,46 +103,25 @@ To add In-App-Purchasing capabilities to your Qt6/QML project follow the steps b
   ```sh
   git clone https://github.com/moritzstoetter/qt6purchasing.git
   ```
-2. Move 'android/GooglePlayBilling.java' to `QT_ANDROID_PACKAGE_SOURCE_DIR/src/com/COMPANY_NAME/APP_NAME/GooglePlayBilling.java`
+2. Copy 'android/GooglePlayBilling.java' to `QT_ANDROID_PACKAGE_SOURCE_DIR/src/com/COMPANY_NAME/APP_NAME/GooglePlayBilling.java`
   For more information on how to include custom Java-Code in your Android App see [Deploying an Application on Android](https://doc.qt.io/qt-6/deployment-android.html).
-3. Add the qt6purchasing Library to your Project. In your project's `CMakeLists.txt` add the following:
-   ```cmake
-   target_link_libraries(APP_NAME
-    PRIVATE
-        ...
-        store
-    )
-    ```
-4. Expose the purchasing classes to QML. In your `main.cpp` include the following lines:
-  ```cpp
-  #if defined Q_OS_ANDROID
-  #include <QJniObject>
-  #include <QCoreApplication>
-  #include "backend/store/android/googleplaystorebackend.h"
-  #include "backend/store/android/googleplaystoreproduct.h"
-  #include "backend/store/android/googleplaystoretransaction.h"
-  #endif
-
-  #if defined Q_OS_DARWIN
-  #include "backend/store/apple/appleappstorebackend.h"
-  #include "backend/store/apple/appleappstoreproduct.h"
-  #include "backend/store/apple/appleappstoretransaction.h"
-  #endif
-
-  ...
-
-  qmlRegisterUncreatableType<AbstractStoreBackend>("AbstractStoreBackend",1,0,"AbstractStoreBackend","AbstractProduct uncreatable");
-  qmlRegisterUncreatableType<AbstractProduct>("AbstractProduct",1,0,"AbstractProduct","AbstractProduct uncreatable");
-  qmlRegisterUncreatableType<AbstractTransaction>("AbstractTransaction",1,0,"AbstractTransaction","AbstractTransaction uncreatable");
-#if defined Q_OS_ANDROID
-  qmlRegisterType<GooglePlayStoreBackend>("Store", 1, 0, "Store");
-  qmlRegisterType<GooglePlayStoreProduct>("Product", 1, 0, "Product");
-#elif defined Q_OS_DARWIN
-  qmlRegisterType<AppleAppStoreBackend>("Store", 1, 0, "Store");
-  qmlRegisterType<AppleAppStoreProduct>("Product", 1, 0, "Product");
-#endif
-  ```
-
+3. Add the qt6purchasing library's QML plugin to your project. In your project's `CMakeLists.txt` add the following:
+   1. Ensure your project applies Qt 6.8 policies.
+      ```cmake
+	  qt_standard_project_setup(REQUIRES 6.8)
+      ```
+   2. Make this library's QML components available in the same build folder as all your own.
+      ```
+	  set(QT_QML_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+      ```
+   3. Link your app target to this library's QML module.
+      ```cmake
+      target_link_libraries(APP_TARGET
+          PRIVATE
+              ...
+              qt6purchasinglibplugin
+      )
+      ```
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -151,19 +130,18 @@ To add In-App-Purchasing capabilities to your Qt6/QML project follow the steps b
 <!-- USAGE EXAMPLES -->
 ## Usage
 
-1. In your QML file include the purchasing classes:
+1. In your QML file include the purchasing module:
   ```qml
-  import Store
-  import Product  
+  import Qt6Purchasing
   ```
 2. Use it like this, for a product that is called "test_1" in the app store(s):
   ```qml
-  Store {
+  Qt6Purchasing.Store {
     id: iapStore
-    Product {
+    Qt6Purchasing.Product {
       id: testingProduct
       identifier: "test_1"
-      type: Product.Consumable
+      type: Qt6Purchasing.Product.Consumable
     }
   }
 
@@ -176,12 +154,11 @@ To add In-App-Purchasing capabilities to your Qt6/QML project follow the steps b
   ```
   `StoreItem.qml`:
   ```qml
-  import QtQuick
-  import Product
+  import Qt6Purchasing
 
   Item {
     id: root
-    required property Product product
+    required property Qt6Purchasing.Product product
 
     signal iapCompleted
 

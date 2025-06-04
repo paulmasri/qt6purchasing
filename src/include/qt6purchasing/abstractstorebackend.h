@@ -3,6 +3,7 @@
 
 #include <QJsonDocument>
 #include <QObject>
+#include <QQmlEngine>
 #include <QQmlListProperty>
 
 class AbstractProduct;
@@ -11,8 +12,12 @@ class AbstractTransaction;
 class AbstractStoreBackend : public QObject
 {
     Q_OBJECT
+    QML_NAMED_ELEMENT(AbstractStoreBackend)
+    QML_UNCREATABLE("AbstractStoreBackend is an abstract base class")
+
     Q_PROPERTY(QQmlListProperty<AbstractProduct> productsQml READ productsQml)
     Q_CLASSINFO("DefaultProperty", "productsQml")
+    Q_PROPERTY(bool connected READ isConnected NOTIFY connectedChanged FINAL)
 
 public:
     static AbstractStoreBackend * instance() { return _instance; }
@@ -32,8 +37,10 @@ protected:
     QList<AbstractProduct *> _products;
     bool _connected = false;
 
+    void setConnected(bool connected);
+
 signals:
-    void connectedChanged(bool connected);
+    void connectedChanged();
     void productRegistered(AbstractProduct * product);
     void purchaseSucceeded(AbstractTransaction * transaction);
     void purchaseRestored(AbstractTransaction * transaction);

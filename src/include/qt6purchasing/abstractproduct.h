@@ -2,6 +2,7 @@
 #define ABSTRACTPRODUCT_H
 
 #include <QObject>
+#include <QQmlEngine>
 #include <qt6purchasing/abstractstorebackend.h>
 
 class AbstractTransaction;
@@ -9,6 +10,9 @@ class AbstractTransaction;
 class AbstractProduct : public QObject
 {
     Q_OBJECT
+    QML_NAMED_ELEMENT(AbstractProduct)
+    QML_UNCREATABLE("AbstractProduct is an abstract base class")
+
     // writable properties
     Q_PROPERTY(QString identifier READ identifier WRITE setIdentifier NOTIFY identifierChanged REQUIRED)
     Q_PROPERTY(ProductType type READ productType WRITE setProductType NOTIFY productTypeChanged REQUIRED)
