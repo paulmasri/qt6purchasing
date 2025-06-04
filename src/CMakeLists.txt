@@ -7,7 +7,8 @@ find_package(Qt6 6.8 REQUIRED COMPONENTS
     Qml
 )
 
-qt_standard_project_setup()
+qt_standard_project_setup(REQUIRES 6.8)
+set(QT_QML_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
 # Platform-specific sources and libraries
 set(PLATFORM_LIBS "")
@@ -77,9 +78,7 @@ qt_add_library(qt6purchasinglib STATIC
 
 qt_add_qml_module(qt6purchasinglib
     URI Qt6Purchasing
-    RESOURCE_PREFIX /
     VERSION 1.0
-    OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/qml/Qt6Purchasing"
 )
 
 target_include_directories(qt6purchasinglib
