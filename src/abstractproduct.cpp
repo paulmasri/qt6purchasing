@@ -61,6 +61,11 @@ void AbstractProduct::registerInStore()
         return;
     }
 
+    if (_status == PendingRegistration || _status == Registered) {
+        qDebug() << "Product" << _identifier << "already registered or pending";
+        return;
+    }
+
     setStatus(AbstractProduct::PendingRegistration);
     AbstractStoreBackend::instance()->registerProduct(this);
 }
