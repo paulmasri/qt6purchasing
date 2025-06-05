@@ -59,6 +59,15 @@ AbstractStoreBackend::AbstractStoreBackend(QObject * parent) : QObject(parent)
     });
 }
 
+QQmlListProperty<AbstractProduct> AbstractStoreBackend::productsQml()
+{
+    return QQmlListProperty<AbstractProduct>(this, nullptr,
+                                             &appendProduct,
+                                             &productCount,
+                                             &productAt,
+                                             &clearProducts);
+}
+
 AbstractProduct * AbstractStoreBackend::product(const QString &identifier)
 {
     for (AbstractProduct * ap : _products) {
@@ -76,4 +85,40 @@ void AbstractStoreBackend::setConnected(bool connected)
     _connected = connected;
     emit connectedChanged();
     qDebug() << "Store connection status changed to" << (_connected ? "connected" : "disconnected");
+}
+
+// Static QQmlListProperty accessors
+void AbstractStoreBackend::appendProduct(QQmlListProperty<AbstractProduct> *list, AbstractProduct *product)
+{
+    AbstractStoreBackend *store = qobject_cast<AbstractStoreBackend*>(list->object);
+    if (store && product) {
+        store->_products.append(product);
+        emit store->productsChanged();
+
+        // Auto-register if store is already connected
+        if (store->isConnected()) {
+            product->registerInStore();
+        }
+    }
+}
+
+qsizetype AbstractStoreBackend::productCount(QQmlListProperty<AbstractProduct> *list)
+{
+    AbstractStoreBackend *store = qobject_cast<AbstractStoreBackend*>(list->object);
+    return store ? store->_products.count() : 0;
+}
+
+AbstractProduct *AbstractStoreBackend::productAt(QQmlListProperty<AbstractProduct> *list, qsizetype index)
+{
+    AbstractStoreBackend *store = qobject_cast<AbstractStoreBackend*>(list->object);
+    return (store && index >= 0 && index < store->_products.count()) ? store->_products.at(index) : nullptr;
+}
+
+void AbstractStoreBackend::clearProducts(QQmlListProperty<AbstractProduct> *list)
+{
+    AbstractStoreBackend *store = qobject_cast<AbstractStoreBackend*>(list->object);
+    if (store) {
+        store->_products.clear();
+        emit store->productsChanged();
+    }
 }

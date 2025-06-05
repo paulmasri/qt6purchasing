@@ -15,13 +15,13 @@ class AbstractStoreBackend : public QObject
     QML_NAMED_ELEMENT(AbstractStoreBackend)
     QML_UNCREATABLE("AbstractStoreBackend is an abstract base class")
 
-    Q_PROPERTY(QQmlListProperty<AbstractProduct> productsQml READ productsQml)
+    Q_PROPERTY(QQmlListProperty<AbstractProduct> productsQml READ productsQml NOTIFY productsChanged)
     Q_CLASSINFO("DefaultProperty", "productsQml")
     Q_PROPERTY(bool connected READ isConnected NOTIFY connectedChanged FINAL)
 
 public:
     static AbstractStoreBackend * instance() { return _instance; }
-    QQmlListProperty<AbstractProduct> productsQml() { return {this, &_products}; }
+    QQmlListProperty<AbstractProduct> productsQml();
     QList<AbstractProduct *> products() { return _products; }
     AbstractProduct * product(const QString &identifier);
     bool isConnected() const { return _connected; }
@@ -39,8 +39,16 @@ protected:
 
     void setConnected(bool connected);
 
+private:
+    static void appendProduct(QQmlListProperty<AbstractProduct> *list, AbstractProduct *product);
+    static qsizetype productCount(QQmlListProperty<AbstractProduct> *list);
+    static AbstractProduct *productAt(QQmlListProperty<AbstractProduct> *list, qsizetype index);
+    static void clearProducts(QQmlListProperty<AbstractProduct> *list);
+
 signals:
+    void productsChanged();
     void connectedChanged();
+
     void productRegistered(AbstractProduct * product);
     void purchaseSucceeded(AbstractTransaction * transaction);
     void purchaseRestored(AbstractTransaction * transaction);
