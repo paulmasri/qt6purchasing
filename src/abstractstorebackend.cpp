@@ -59,6 +59,15 @@ AbstractStoreBackend::AbstractStoreBackend(QObject * parent) : QObject(parent)
     });
 }
 
+AbstractProduct * AbstractStoreBackend::product(const QString &identifier)
+{
+    for (AbstractProduct * ap : _products) {
+        if (ap->identifier() == identifier)
+            return ap;
+    }
+    return nullptr;
+}
+
 void AbstractStoreBackend::setConnected(bool connected)
 {
     if (_connected == connected)
@@ -67,13 +76,4 @@ void AbstractStoreBackend::setConnected(bool connected)
     _connected = connected;
     emit connectedChanged();
     qDebug() << "Store connection status changed to" << (_connected ? "connected" : "disconnected");
-}
-
-AbstractProduct * AbstractStoreBackend::product(const QString &identifier)
-{
-    for (AbstractProduct * ap : _products) {
-        if (ap->identifier() == identifier)
-            return ap;
-    }
-    return nullptr;
 }
