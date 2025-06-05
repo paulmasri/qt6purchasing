@@ -52,12 +52,12 @@ void AbstractProduct::registerInStore()
     }
 
     if(!AbstractStoreBackend::instance()->isConnected()) {
-        qCritical() << "No connection to store!";
+        qDebug() << "No connection to store - will register when connected";
         return;
     }
 
     if (_identifier.isEmpty()) {
-        qCritical() << "Product has no id!";
+        qDebug() << "Product has no id - skipping registration";
         return;
     }
 
@@ -79,17 +79,17 @@ void AbstractProduct::purchase()
     }
 
     if(!AbstractStoreBackend::instance()->isConnected()) {
-        qCritical() << "No connection to store!";
+        qWarning() << "Cannot purchase - store not connected";
         return;
     }
 
     if (_identifier.isEmpty()) {
-        qCritical() << "Product has no id!";
+        qWarning() << "Cannot purchase - product has no identifier";
         return;
     }
 
     if (_status != AbstractProduct::Registered) {
-        qDebug() << "Trying to purchase an unregistered Product. Aborting";
+        qWarning() << "Cannot purchase unregistered product:" << _identifier;
         return;
     }
 
