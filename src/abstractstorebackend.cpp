@@ -94,11 +94,6 @@ void AbstractStoreBackend::appendProduct(QQmlListProperty<AbstractProduct> *list
     if (store && product) {
         store->_products.append(product);
         emit store->productsChanged();
-
-        // Auto-register if store is already connected
-        if (store->isConnected()) {
-            product->registerInStore();
-        }
     }
 }
 
