@@ -7,6 +7,17 @@ AbstractProduct::AbstractProduct(QObject * parent) : QObject(parent)
     connect(this, &AbstractProduct::storeChanged, this, &AbstractProduct::registerInStore);
 }
 
+AbstractStoreBackend* AbstractProduct::findStoreBackend() const
+{
+    QObject* p = parent();
+    while (p) {
+        if (auto* store = qobject_cast<AbstractStoreBackend*>(p))
+            return store;
+        p = p->parent();
+    }
+    return nullptr;
+}
+
 void AbstractProduct::setDescription(QString value)
 {
     _description = value;
@@ -46,12 +57,13 @@ void AbstractProduct::setStatus(ProductStatus status)
 
 void AbstractProduct::registerInStore()
 {
-    if (!AbstractStoreBackend::instance()) {
-        qCritical() << "Store unavailable!";
+    auto* store = findStoreBackend();
+    if (!store) {
+        qCritical() << "Product not child of a store backend!";
         return;
     }
 
-    if(!AbstractStoreBackend::instance()->isConnected()) {
+    if(!store->isConnected()) {
         qDebug() << "No connection to store - will register when connected";
         return;
     }
@@ -67,18 +79,19 @@ void AbstractProduct::registerInStore()
     }
 
     setStatus(AbstractProduct::PendingRegistration);
-    AbstractStoreBackend::instance()->registerProduct(this);
+    store->registerProduct(this);
 }
 
 
 void AbstractProduct::purchase()
 {
-    if (!AbstractStoreBackend::instance()) {
-        qCritical() << "Store unavailable!";
+    auto* store = findStoreBackend();
+    if (!store) {
+        qCritical() << "Product not child of a store backend!";
         return;
     }
 
-    if(!AbstractStoreBackend::instance()->isConnected()) {
+    if(!store->isConnected()) {
         qWarning() << "Cannot purchase - store not connected";
         return;
     }
@@ -93,5 +106,5 @@ void AbstractProduct::purchase()
         return;
     }
 
-    AbstractStoreBackend::instance()->purchaseProduct(this);
+    store->purchaseProduct(this);
 }

@@ -64,6 +64,9 @@ protected:
     ProductType _productType;
     QString _title;
 
+private:
+    AbstractStoreBackend* findStoreBackend() const;
+
 signals:
     void storeChanged();
     void statusChanged();

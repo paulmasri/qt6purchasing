@@ -20,7 +20,6 @@ class AbstractStoreBackend : public QObject
     Q_PROPERTY(bool connected READ isConnected NOTIFY connectedChanged FINAL)
 
 public:
-    static AbstractStoreBackend * instance() { return _instance; }
     QQmlListProperty<AbstractProduct> productsQml();
     QList<AbstractProduct *> products() { return _products; }
     AbstractProduct * product(const QString &identifier);
@@ -33,7 +32,6 @@ public:
 
 protected:
     explicit AbstractStoreBackend(QObject * parent = nullptr);
-    static AbstractStoreBackend * _instance;
     QList<AbstractProduct *> _products;
     bool _connected = false;
 
