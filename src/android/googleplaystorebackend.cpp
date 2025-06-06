@@ -35,6 +35,8 @@ GooglePlayStoreBackend::GooglePlayStoreBackend(QObject * parent) : AbstractStore
     env->DeleteLocalRef(objectClass);
 
     this->startConnection();
+
+    Q_ASSERT(QThread::currentThread() == QCoreApplication::instance()->thread());
     s_currentInstance = this;
 }
 

@@ -201,6 +201,15 @@ To add In-App-Purchasing capabilities to your Qt6/QML project follow the steps b
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
+## Thread Safety
+
+**Important**: Store backends must be created and destroyed on the main thread. The library uses static instances internally for routing platform callbacks, which requires main-thread access for thread safety.
+
+In QML, this happens automatically since QML components are created on the main thread.
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+
 <!-- CONTRIBUTING -->
 ## Contributing
 

@@ -83,7 +83,7 @@ AppleAppStoreBackend* AppleAppStoreBackend::s_currentInstance = nullptr;
             QMetaObject::invokeMethod(backend, "productRegistered", Qt::AutoConnection, Q_ARG(AbstractProduct*, product));
         } else {
         }
-        
+
         [skProduct release];
     }
 
@@ -129,6 +129,8 @@ AppleAppStoreBackend* AppleAppStoreBackend::s_currentInstance = nullptr;
 AppleAppStoreBackend::AppleAppStoreBackend(QObject * parent) : AbstractStoreBackend(parent)
 {
     this->startConnection();
+
+    Q_ASSERT(QThread::currentThread() == QCoreApplication::instance()->thread());
     s_currentInstance = this;
 }
 
