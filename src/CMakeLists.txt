@@ -55,6 +55,15 @@ elseif(APPLE)
     )
 
     set(PLATFORM_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR}/apple)
+
+    # Ensure ARC is enabled for Objective-C++ files
+    set_source_files_properties(
+        apple/appleappstorebackend.mm
+        apple/appleappstoreproduct.mm
+        apple/appleappstoretransaction.mm
+        PROPERTIES
+        COMPILE_FLAGS "-fobjc-arc"
+    )
 endif()
 
 # The public-facing library

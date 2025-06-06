@@ -34,8 +34,6 @@ AppleAppStoreBackend* AppleAppStoreBackend::s_currentInstance = nullptr;
 -(void)dealloc
 {
     [[SKPaymentQueue defaultQueue] removeTransactionObserver:self];
-    [pendingTransactions release];
-    [super dealloc];
 }
 
 -(void)requestProductData:(NSString *)identifier
@@ -56,7 +54,7 @@ AppleAppStoreBackend* AppleAppStoreBackend::s_currentInstance = nullptr;
     }
 
     NSArray<SKProduct *> * skProducts = response.products;
-    SKProduct * skProduct = [skProducts count] == 1 ? [[skProducts firstObject] retain] : nil;
+    SKProduct * skProduct = [skProducts count] == 1 ? [skProducts firstObject] : nil;
 
     if (skProduct == nil) {
         //Invalid product ID
@@ -74,7 +72,6 @@ AppleAppStoreBackend* AppleAppStoreBackend::s_currentInstance = nullptr;
             [numberFormatter setNumberStyle:NSNumberFormatterCurrencyStyle];
             [numberFormatter setLocale:skProduct.priceLocale];
             NSString * localizedPrice = [numberFormatter stringFromNumber:skProduct.price];
-            [numberFormatter release];
 
             product->setNativeProduct(skProduct);
             product->setDescription(QString::fromNSString(skProduct.localizedDescription));
@@ -85,11 +82,7 @@ AppleAppStoreBackend* AppleAppStoreBackend::s_currentInstance = nullptr;
             QMetaObject::invokeMethod(backend, "productRegistered", Qt::AutoConnection, Q_ARG(AbstractProduct*, product));
         } else {
         }
-
-        [skProduct release];
     }
-
-    [request release];
 }
 
 //SKPaymentTransactionObserver
@@ -140,8 +133,6 @@ AppleAppStoreBackend::~AppleAppStoreBackend()
 {
     if (s_currentInstance == this)
         s_currentInstance = nullptr;
-
-    [_iapManager release];
 }
 
 void AppleAppStoreBackend::startConnection()
