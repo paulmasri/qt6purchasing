@@ -4,6 +4,8 @@
 
 #include <QDebug>
 #include <QJsonObject>
+#include <QThread>
+#include <QCoreApplication>
 
 #import <StoreKit/StoreKit.h>
 

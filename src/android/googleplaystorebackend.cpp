@@ -6,6 +6,8 @@
 #include <QDebug>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QThread>
+#include <QCoreApplication>
 
 GooglePlayStoreBackend * GooglePlayStoreBackend::s_currentInstance = nullptr;
 
