@@ -197,8 +197,20 @@ To add In-App-Purchasing capabilities to your Qt6/QML project follow the steps b
     }
   }
   ```
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+3. **Note**: Transactions will automatically be destroyed after your handler completes. If for some reason you want to hold onto a `transaction`, call `retain()` immediately and then call `destroy()` when you're done.
+  ```qml
+  Connections {
+      target: product
+      function onPurchaseConsumed(transaction) {
+          transaction.retain() // Retain transaction while we do deferred work
+          
+          Qt.callLater(function() {
+              // Update user preferences, analytics, etc.
+              transaction.destroy()
+          })
+      }
+  }
+  ```
 
 
 ## Thread Safety

@@ -17,3 +17,15 @@ void AbstractTransaction::finalize()
     qDebug() << "Transaction: Finalizing purchase" << this->_orderId;
     _store->consumePurchase(this);
 }
+
+void AbstractTransaction::retain()
+{
+    _retained = true;
+    qDebug() << "Transaction retained:" << _orderId;
+}
+
+void AbstractTransaction::destroy()
+{
+    qDebug() << "Transaction destroyed:" << _orderId;
+    deleteLater();
+}

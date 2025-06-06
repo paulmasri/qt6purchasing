@@ -2,6 +2,8 @@
 #include <qt6purchasing/abstractproduct.h>
 #include <qt6purchasing/abstracttransaction.h>
 
+#include <QTimer>
+
 AbstractStoreBackend::AbstractStoreBackend(QObject * parent) : QObject(parent)
 {
     qDebug() << "Creating store backend";
@@ -17,9 +19,11 @@ AbstractStoreBackend::AbstractStoreBackend(QObject * parent) : QObject(parent)
             qDebug() << "Disconnected from store";
         }
     });
+
     connect(this, &AbstractStoreBackend::productRegistered, [](AbstractProduct * product){
         qDebug() << "Product registered:" << product->identifier();
     });
+
     connect(this, &AbstractStoreBackend::purchaseSucceeded, [this](AbstractTransaction * transaction){
         qDebug() << "purchaseSucceeded:" << transaction->orderId();
 
@@ -29,7 +33,15 @@ AbstractStoreBackend::AbstractStoreBackend(QObject * parent) : QObject(parent)
         } else {
             qCritical() << "Failed to map successful purchase to a product!";
         }
+
+        // Auto-cleanup unless retained
+        QTimer::singleShot(0, this, [transaction]() {
+            if (!transaction->property("_retained").toBool()) {
+                transaction->deleteLater();
+            }
+        });
     });
+
     connect(this, &AbstractStoreBackend::purchaseRestored, [this](AbstractTransaction * transaction){
         qDebug() << "purchaseRestored:" << transaction->orderId();
 
@@ -39,10 +51,19 @@ AbstractStoreBackend::AbstractStoreBackend(QObject * parent) : QObject(parent)
         } else {
             qCritical() << "Failed to map restored purchase to a product!";
         }
+
+        // Auto-cleanup unless retained
+        QTimer::singleShot(0, this, [transaction]() {
+            if (!transaction->property("_retained").toBool()) {
+                transaction->deleteLater();
+            }
+        });
     });
+
     connect(this, &AbstractStoreBackend::purchaseFailed, [](int code){
         qDebug() << "purchaseFailed:" << code;
     });
+
     connect(this, &AbstractStoreBackend::purchaseConsumed, [this](AbstractTransaction * transaction){
         qDebug() << "purchaseConsumed:" << transaction->orderId();
 
@@ -52,6 +73,13 @@ AbstractStoreBackend::AbstractStoreBackend(QObject * parent) : QObject(parent)
         } else {
             qCritical() << "Failed to map consumed purchase to a product!";
         }
+
+        // Auto-cleanup unless retained
+        QTimer::singleShot(0, this, [transaction]() {
+            if (!transaction->property("_retained").toBool()) {
+                transaction->deleteLater();
+            }
+        });
     });
 }
 
