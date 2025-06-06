@@ -56,7 +56,7 @@ AppleAppStoreBackend* AppleAppStoreBackend::s_currentInstance = nullptr;
     }
 
     NSArray<SKProduct *> * skProducts = response.products;
-    SKProduct * skProduct = [skProducts count] == 1 ? [[skProducts firstObject] retain] : nil;
+    SKProduct * skProduct = [skProducts count] == 1 ? [skProducts firstObject] : nil;
 
     if (skProduct == nil) {
         //Invalid product ID
@@ -85,11 +85,7 @@ AppleAppStoreBackend* AppleAppStoreBackend::s_currentInstance = nullptr;
             QMetaObject::invokeMethod(backend, "productRegistered", Qt::AutoConnection, Q_ARG(AbstractProduct*, product));
         } else {
         }
-
-        [skProduct release];
     }
-
-    [request release];
 }
 
 //SKPaymentTransactionObserver
