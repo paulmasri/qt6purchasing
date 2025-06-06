@@ -30,12 +30,15 @@ public:
     virtual QString productId() const = 0;
 
     Q_INVOKABLE void finalize();
+    Q_INVOKABLE void retain();
+    Q_INVOKABLE void destroy();
 
 protected:
     explicit AbstractTransaction(QString orderId, QObject * parent = nullptr);
     AbstractStoreBackend * _store = nullptr;
     int _status;
     QString _orderId;
+    bool _retained = false;
 
 signals:
     void statusChanged();
@@ -43,4 +46,3 @@ signals:
 };
 
 #endif // ABSTRACTTRANSACTION_H
-
