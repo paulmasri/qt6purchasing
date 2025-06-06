@@ -212,9 +212,6 @@ To add In-App-Purchasing capabilities to your Qt6/QML project follow the steps b
   }
   ```
 
-**Important**: It is your responsibility to destroy the `transaction` objects received on the pro
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
 
 ## Thread Safety
 
