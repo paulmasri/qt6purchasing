@@ -3,7 +3,7 @@
 
 #include <qt6purchasing/abstracttransaction.h>
 
-Q_FORWARD_DECLARE_OBJC_CLASS(SKPaymentTransaction);
+Q_FORWARD_DECLARE_OBJC_CLASS(Transaction);
 
 class AppleAppStoreTransaction : public AbstractTransaction
 {
@@ -12,21 +12,13 @@ class AppleAppStoreTransaction : public AbstractTransaction
     QML_UNCREATABLE("Transactions are created by the store backend")
 
 public:
-    enum AppleAppStoreTransactionState {
-        Purchasing,
-        Purchased,
-        Failed,
-        Restored,
-        Deferred
-    };
-    Q_ENUM(AppleAppStoreTransactionState)
-    AppleAppStoreTransaction(SKPaymentTransaction * transaction, QObject * parent = nullptr);
+    AppleAppStoreTransaction(Transaction * transaction, QObject * parent = nullptr);
 
     QString productId() const override;
-    SKPaymentTransaction * nativeTransaction() { return _nativeTransaction; }
+    Transaction * nativeTransaction() { return _nativeTransaction; }
 
 private:
-    SKPaymentTransaction * _nativeTransaction;
+    Transaction * _nativeTransaction = nullptr;
 };
 
 #endif // APPLEAPPSTORETRANSACTION_H

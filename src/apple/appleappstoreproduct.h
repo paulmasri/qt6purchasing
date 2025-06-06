@@ -3,7 +3,7 @@
 
 #include <qt6purchasing/abstractproduct.h>
 
-Q_FORWARD_DECLARE_OBJC_CLASS(SKProduct);
+Q_FORWARD_DECLARE_OBJC_CLASS(Product);
 
 class AppleAppStoreProduct : public AbstractProduct
 {
@@ -13,11 +13,11 @@ class AppleAppStoreProduct : public AbstractProduct
 public:
     AppleAppStoreProduct(QObject * parent = nullptr);
 
-    SKProduct * nativeProduct() { return _nativeProduct; }
-    void setNativeProduct(SKProduct * np);
+    Product * nativeProduct() { return _nativeProduct; }
+    void setNativeProduct(Product * product);
 
 private:
-    SKProduct * _nativeProduct = nullptr;
+    Product * _nativeProduct = nullptr;
 };
 
 #endif // APPLEAPPSTOREPRODUCT_H

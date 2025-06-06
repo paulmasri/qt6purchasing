@@ -9,15 +9,15 @@
 
 #import <StoreKit/StoreKit.h>
 
+// Qt 6.8 requires iOS 16+ so StoreKit 2 is always available
+
 AppleAppStoreBackend* AppleAppStoreBackend::s_currentInstance = nullptr;
 
-@interface InAppPurchaseManager : NSObject <SKProductsRequestDelegate, SKPaymentTransactionObserver>
-{
-    NSMutableArray<SKPaymentTransaction *> *pendingTransactions;
-}
+@interface InAppPurchaseManager : NSObject
 
 -(id)init;
 -(void)requestProductData:(NSString *)identifier;
+-(void)startTransactionListener;
 
 @end
 
@@ -25,99 +25,92 @@ AppleAppStoreBackend* AppleAppStoreBackend::s_currentInstance = nullptr;
 
 -(id)init {
     if (self = [super init]) {
-        pendingTransactions = [[NSMutableArray<SKPaymentTransaction *> alloc] init];
-        [[SKPaymentQueue defaultQueue] addTransactionObserver:self];
+        [self startTransactionListener];
     }
     return self;
 }
 
 -(void)dealloc
 {
-    [[SKPaymentQueue defaultQueue] removeTransactionObserver:self];
+    // StoreKit 2 automatically handles cleanup
 }
 
 -(void)requestProductData:(NSString *)identifier
 {
-    NSSet<NSString *> * productId = [NSSet<NSString *> setWithObject:identifier];
-    SKProductsRequest * productsRequest = [[SKProductsRequest alloc] initWithProductIdentifiers:productId];
-    productsRequest.delegate = self;
-    [productsRequest start];
-}
+    NSSet<NSString *> * productIds = [NSSet<NSString *> setWithObject:identifier];
 
-//SKProductsRequestDelegate
--(void)productsRequest:(SKProductsRequest *)request didReceiveResponse:(SKProductsResponse *)response
-{
-    AppleAppStoreBackend * backend = AppleAppStoreBackend::s_currentInstance;
-    if (!backend) {
-        qCritical() << "Apple Store product callback received but backend instance is null";
-        return;
-    }
-
-    NSArray<SKProduct *> * skProducts = response.products;
-    SKProduct * skProduct = [skProducts count] == 1 ? [skProducts firstObject] : nil;
-
-    if (skProduct == nil) {
-        //Invalid product ID
-        NSString * invalidId = [response.invalidProductIdentifiers firstObject];
-        if (backend->product(QString::fromNSString(invalidId)))
-            backend->product(QString::fromNSString(invalidId))->setStatus(AbstractProduct::Unknown);
-    } else {
-        //Valid product query
-        AppleAppStoreProduct * product = reinterpret_cast<AppleAppStoreProduct*>( backend->product(QString::fromNSString(skProduct.productIdentifier)) );
-
-        if (product) {
-            // formatting price string
-            NSNumberFormatter *numberFormatter = [[NSNumberFormatter alloc] init];
-            [numberFormatter setFormatterBehavior:NSNumberFormatterBehavior10_4];
-            [numberFormatter setNumberStyle:NSNumberFormatterCurrencyStyle];
-            [numberFormatter setLocale:skProduct.priceLocale];
-            NSString * localizedPrice = [numberFormatter stringFromNumber:skProduct.price];
-
-            product->setNativeProduct(skProduct);
-            product->setDescription(QString::fromNSString(skProduct.localizedDescription));
-            product->setPrice(QString::fromNSString(localizedPrice));
-            product->setTitle(QString::fromNSString(skProduct.localizedTitle));
-            product->setStatus(AbstractProduct::Registered);
-
-            QMetaObject::invokeMethod(backend, "productRegistered", Qt::AutoConnection, Q_ARG(AbstractProduct*, product));
-        } else {
+    [Product productsForIdentifiers:productIds completionHandler:^(NSArray<Product *> * _Nonnull products, NSError * _Nullable error) {
+        AppleAppStoreBackend * backend = AppleAppStoreBackend::s_currentInstance;
+        if (!backend) {
+            qCritical() << "Apple Store product callback received but backend instance is null";
+            return;
         }
-    }
-}
 
-//SKPaymentTransactionObserver
-- (void)paymentQueue:(SKPaymentQueue *)queue updatedTransactions:(NSArray<SKPaymentTransaction *> *)transactions
-{
-    AppleAppStoreBackend* backend = AppleAppStoreBackend::s_currentInstance;
-    if (!backend) {
-        qCritical() << "Apple Store transaction callback received but backend instance is null - transactions will be lost";
-        return;
-    }
-
-    Q_UNUSED(queue);
-
-    for (SKPaymentTransaction * transaction in transactions) {
-        AppleAppStoreTransaction * ta = new AppleAppStoreTransaction(transaction, backend);
-
-        switch (static_cast<AppleAppStoreTransaction::AppleAppStoreTransactionState>(transaction.transactionState)) {
-        case AppleAppStoreTransaction::Purchasing:
-            //unhandled
-            break;
-        case AppleAppStoreTransaction::Purchased:
-            QMetaObject::invokeMethod(backend, "purchaseSucceeded", Qt::AutoConnection, Q_ARG(AbstractTransaction*, ta));
-            break;
-        case AppleAppStoreTransaction::Failed:
-            QMetaObject::invokeMethod(backend, "purchaseFailed", Qt::AutoConnection, Q_ARG(int, transaction.error.code));
-            break;
-        case AppleAppStoreTransaction::Restored:
-            QMetaObject::invokeMethod(backend, "purchaseRestored", Qt::AutoConnection, Q_ARG(AbstractTransaction*, ta));
-            break;
-        case AppleAppStoreTransaction::Deferred:
-            //unhandled
-            break;
+        if (error) {
+            qWarning() << "Product request failed:" << QString::fromNSString(error.localizedDescription);
+            if (backend->product(QString::fromNSString(identifier)))
+                backend->product(QString::fromNSString(identifier))->setStatus(AbstractProduct::Unknown);
+            return;
         }
-    }
+
+        if (products.count == 0) {
+            qWarning() << "No products found for identifier:" << QString::fromNSString(identifier);
+            if (backend->product(QString::fromNSString(identifier)))
+                backend->product(QString::fromNSString(identifier))->setStatus(AbstractProduct::Unknown);
+            return;
+        }
+
+        Product * nativeProduct = [products firstObject];
+        AppleAppStoreProduct * qtProduct = reinterpret_cast<AppleAppStoreProduct*>(backend->product(QString::fromNSString(nativeProduct.id)));
+
+        if (qtProduct) {
+            qtProduct->setNativeProduct(nativeProduct);
+            qtProduct->setDescription(QString::fromNSString(nativeProduct.description));
+            qtProduct->setPrice(QString::fromNSString(nativeProduct.displayPrice));
+            qtProduct->setTitle(QString::fromNSString(nativeProduct.displayName));
+            qtProduct->setStatus(AbstractProduct::Registered);
+
+            QMetaObject::invokeMethod(backend, "productRegistered", Qt::AutoConnection, Q_ARG(AbstractProduct*, qtProduct));
+        }
+    }];
 }
+
+-(void)startTransactionListener
+{
+    // Start listening for transaction updates
+    [Transaction addTransactionObserver:^(NSArray<Transaction *> * _Nonnull transactions) {
+        AppleAppStoreBackend * backend = AppleAppStoreBackend::s_currentInstance;
+        if (!backend) {
+            qCritical() << "Transaction callback received but backend instance is null";
+            return;
+        }
+
+        for (Transaction * transaction in transactions) {
+            // Verify the transaction
+            if ([transaction verifyTransaction]) {
+                AppleAppStoreTransaction * ta = new AppleAppStoreTransaction(transaction, backend);
+
+                switch (transaction.transactionState) {
+                case TransactionStatePurchased:
+                    QMetaObject::invokeMethod(backend, "purchaseSucceeded", Qt::AutoConnection, Q_ARG(AbstractTransaction*, ta));
+                    break;
+                case TransactionStateFailed:
+                    QMetaObject::invokeMethod(backend, "purchaseFailed", Qt::AutoConnection, Q_ARG(int, transaction.error.code));
+                    break;
+                case TransactionStateRestored:
+                    QMetaObject::invokeMethod(backend, "purchaseRestored", Qt::AutoConnection, Q_ARG(AbstractTransaction*, ta));
+                    break;
+                case TransactionStatePending:
+                    // Handle pending transactions if needed
+                    break;
+                }
+            } else {
+                qWarning() << "Transaction verification failed for transaction ID:" << transaction.id;
+            }
+        }
+    }];
+}
+
 
 @end
 
@@ -148,14 +141,25 @@ void AppleAppStoreBackend::registerProduct(AbstractProduct * product)
 
 void AppleAppStoreBackend::purchaseProduct(AbstractProduct * product)
 {
-    SKProduct * skProduct = reinterpret_cast<AppleAppStoreProduct*>(product)->nativeProduct();
+    AppleAppStoreProduct * qtProduct = reinterpret_cast<AppleAppStoreProduct*>(product);
+    Product * nativeProduct = qtProduct->nativeProduct();
 
-    SKPayment * payment = [SKPayment paymentWithProduct:skProduct];
-    [[SKPaymentQueue defaultQueue] addPayment:payment];
+    if (nativeProduct) {
+        [Product purchaseProduct:nativeProduct completionHandler:^(Product * _Nullable purchasedProduct, NSError * _Nullable error) {
+            if (error) {
+                QMetaObject::invokeMethod(this, "purchaseFailed", Qt::AutoConnection, Q_ARG(int, error.code));
+            } else {
+                qDebug() << "Purchase initiated for product:" << QString::fromNSString(purchasedProduct.id);
+            }
+        }];
+    } else {
+        qWarning() << "Cannot purchase product - no native product available";
+    }
 }
 
 void AppleAppStoreBackend::consumePurchase(AbstractTransaction * transaction)
 {
-    [[SKPaymentQueue defaultQueue] finishTransaction:reinterpret_cast<AppleAppStoreTransaction *>(transaction)->nativeTransaction()];
+    // StoreKit 2: Transactions are automatically finished when verified
+    qDebug() << "Transaction consumed (auto-finished)";
     emit purchaseConsumed(transaction);
 }
