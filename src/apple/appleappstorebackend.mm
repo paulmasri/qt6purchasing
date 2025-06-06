@@ -4,24 +4,27 @@
 
 #include <QDebug>
 #include <QJsonObject>
+#include <QThread>
+#include <QCoreApplication>
 
 #import <StoreKit/StoreKit.h>
 
+AppleAppStoreBackend* AppleAppStoreBackend::s_currentInstance = nullptr;
+
 @interface InAppPurchaseManager : NSObject <SKProductsRequestDelegate, SKPaymentTransactionObserver>
 {
-    AppleAppStoreBackend * backend;
     NSMutableArray<SKPaymentTransaction *> *pendingTransactions;
 }
 
+-(id)init;
 -(void)requestProductData:(NSString *)identifier;
 
 @end
 
 @implementation InAppPurchaseManager
 
--(id)initWithBackend:(AppleAppStoreBackend *)iapBackend {
+-(id)init {
     if (self = [super init]) {
-        backend = iapBackend;
         pendingTransactions = [[NSMutableArray<SKPaymentTransaction *> alloc] init];
         [[SKPaymentQueue defaultQueue] addTransactionObserver:self];
     }
@@ -46,6 +49,12 @@
 //SKProductsRequestDelegate
 -(void)productsRequest:(SKProductsRequest *)request didReceiveResponse:(SKProductsResponse *)response
 {
+    AppleAppStoreBackend * backend = AppleAppStoreBackend::s_currentInstance;
+    if (!backend) {
+        qCritical() << "Apple Store product callback received but backend instance is null";
+        return;
+    }
+
     NSArray<SKProduct *> * skProducts = response.products;
     SKProduct * skProduct = [skProducts count] == 1 ? [[skProducts firstObject] retain] : nil;
 
@@ -76,16 +85,24 @@
             QMetaObject::invokeMethod(backend, "productRegistered", Qt::AutoConnection, Q_ARG(AbstractProduct*, product));
         } else {
         }
+
+        [skProduct release];
     }
 
-//    [skProduct release];
     [request release];
 }
 
 //SKPaymentTransactionObserver
 - (void)paymentQueue:(SKPaymentQueue *)queue updatedTransactions:(NSArray<SKPaymentTransaction *> *)transactions
 {
+    AppleAppStoreBackend* backend = AppleAppStoreBackend::s_currentInstance;
+    if (!backend) {
+        qCritical() << "Apple Store transaction callback received but backend instance is null - transactions will be lost";
+        return;
+    }
+
     Q_UNUSED(queue);
+
     for (SKPaymentTransaction * transaction in transactions) {
         AppleAppStoreTransaction * ta = new AppleAppStoreTransaction(transaction, backend);
 
@@ -114,14 +131,22 @@
 AppleAppStoreBackend::AppleAppStoreBackend(QObject * parent) : AbstractStoreBackend(parent)
 {
     this->startConnection();
+
+    Q_ASSERT(QThread::currentThread() == QCoreApplication::instance()->thread());
+    s_currentInstance = this;
+}
+
+AppleAppStoreBackend::~AppleAppStoreBackend()
+{
+    if (s_currentInstance == this)
+        s_currentInstance = nullptr;
+
+    [_iapManager release];
 }
 
 void AppleAppStoreBackend::startConnection()
 {
-    _iapManager = [
-            [InAppPurchaseManager alloc]
-            initWithBackend:this
-    ];
+    _iapManager = [[InAppPurchaseManager alloc] init];
     setConnected(_iapManager != nullptr);
 }
 
@@ -142,9 +167,4 @@ void AppleAppStoreBackend::consumePurchase(AbstractTransaction * transaction)
 {
     [[SKPaymentQueue defaultQueue] finishTransaction:reinterpret_cast<AppleAppStoreTransaction *>(transaction)->nativeTransaction()];
     emit purchaseConsumed(transaction);
-}
-
-AppleAppStoreBackend::~AppleAppStoreBackend()
-{
-    [_iapManager release];
 }

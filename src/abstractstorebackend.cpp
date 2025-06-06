@@ -2,12 +2,8 @@
 #include <qt6purchasing/abstractproduct.h>
 #include <qt6purchasing/abstracttransaction.h>
 
-AbstractStoreBackend * AbstractStoreBackend::_instance = nullptr;
-
 AbstractStoreBackend::AbstractStoreBackend(QObject * parent) : QObject(parent)
 {
-    _instance = this;
-
     qDebug() << "Creating store backend";
 
     connect(this, &AbstractStoreBackend::connectedChanged, [this]() {

@@ -6,6 +6,10 @@
 #include <QDebug>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QThread>
+#include <QCoreApplication>
+
+GooglePlayStoreBackend * GooglePlayStoreBackend::s_currentInstance = nullptr;
 
 GooglePlayStoreBackend::GooglePlayStoreBackend(QObject * parent) : AbstractStoreBackend(parent)
 {
@@ -33,11 +37,24 @@ GooglePlayStoreBackend::GooglePlayStoreBackend(QObject * parent) : AbstractStore
     env->DeleteLocalRef(objectClass);
 
     this->startConnection();
+
+    Q_ASSERT(QThread::currentThread() == QCoreApplication::instance()->thread());
+    s_currentInstance = this;
+}
+
+GooglePlayStoreBackend::~GooglePlayStoreBackend()
+{
+    if (s_currentInstance == this)
+        s_currentInstance = nullptr;
+
+    delete _googlePlayBillingJavaClass;
 }
 
 /*static*/ void GooglePlayStoreBackend::debugMessage(JNIEnv * env, jobject object, jstring message)
 {
-    qDebug() << env->GetStringUTFChars(message, nullptr);
+    const char* messageCStr = env->GetStringUTFChars(message, nullptr);
+    qDebug() << messageCStr;
+    env->ReleaseStringUTFChars(message, messageCStr);
 }
 
 /*static*/ void GooglePlayStoreBackend::billingResponseReceived(JNIEnv * env, jobject object, jint value)
@@ -47,7 +64,12 @@ GooglePlayStoreBackend::GooglePlayStoreBackend(QObject * parent) : AbstractStore
 
 /*static*/ void GooglePlayStoreBackend::connectedChangedHelper(JNIEnv * env, jobject object, jboolean connected)
 {
-    GooglePlayStoreBackend::instance()->setConnected(connected);
+    GooglePlayStoreBackend * backend = GooglePlayStoreBackend::s_currentInstance;
+    if (!backend) {
+        qCritical() << "Google Play billing callback received but backend instance is null";
+        return;
+    }
+    backend->setConnected(connected);
 }
 
 void GooglePlayStoreBackend::startConnection()
@@ -66,9 +88,17 @@ void GooglePlayStoreBackend::registerProduct(AbstractProduct * product)
 
 /*static*/ void GooglePlayStoreBackend::productRegistered(JNIEnv * env, jobject object, jstring message)
 {
-    QJsonObject json = QJsonDocument::fromJson(env->GetStringUTFChars(message, nullptr)).object();
-
-    GooglePlayStoreProduct * product = reinterpret_cast<GooglePlayStoreProduct *>(AbstractStoreBackend::instance()->product( json["productId"].toString() ));
+    GooglePlayStoreBackend* backend = GooglePlayStoreBackend::s_currentInstance;
+    if (!backend) {
+        qCritical() << "Google Play product registration callback received but backend instance is null";
+        return;
+    }
+    
+    const char* jsonCStr = env->GetStringUTFChars(message, nullptr);
+    QJsonObject json = QJsonDocument::fromJson(jsonCStr).object();
+    env->ReleaseStringUTFChars(message, jsonCStr);
+    
+    GooglePlayStoreProduct * product = reinterpret_cast<GooglePlayStoreProduct *>(backend->product( json["productId"].toString() ));
 
     if (product) {
         product->setJson(json);
@@ -77,7 +107,7 @@ void GooglePlayStoreBackend::registerProduct(AbstractProduct * product)
         product->setTitle(json["title"].toString());
         product->setStatus(AbstractProduct::Registered);
 
-        emit GooglePlayStoreBackend::instance()->productRegistered(product);
+        emit backend->productRegistered(product);
     } else {
         qCritical() << "Registered a product that's not in the list of products. This is not handled.";
     }
@@ -108,30 +138,59 @@ void GooglePlayStoreBackend::consumePurchase(AbstractTransaction * transaction)
 
 /*static*/ void GooglePlayStoreBackend::purchaseSucceeded(JNIEnv *env, jobject object, jstring message)
 {
-    QJsonObject json = QJsonDocument::fromJson(env->GetStringUTFChars(message, nullptr)).object();
+    GooglePlayStoreBackend* backend = GooglePlayStoreBackend::s_currentInstance;
+    if (!backend) {
+        qCritical() << "Google Play purchase callback received but backend instance is null";
+        return;
+    }
 
-    GooglePlayStoreTransaction * transaction = new GooglePlayStoreTransaction(json, AbstractStoreBackend::instance());
-    emit GooglePlayStoreBackend::instance()->purchaseSucceeded(transaction);
+    const char* jsonCStr = env->GetStringUTFChars(message, nullptr);
+    QJsonObject json = QJsonDocument::fromJson(jsonCStr).object();
+    env->ReleaseStringUTFChars(message, jsonCStr);
+
+    GooglePlayStoreTransaction * transaction = new GooglePlayStoreTransaction(json, backend);
+    emit backend->purchaseSucceeded(transaction);
 }
 
 /*static*/ void GooglePlayStoreBackend::purchaseRestored(JNIEnv *env, jobject object, jstring message)
 {
-    QJsonObject json = QJsonDocument::fromJson(env->GetStringUTFChars(message, nullptr)).object();
+    GooglePlayStoreBackend* backend = GooglePlayStoreBackend::s_currentInstance;
+    if (!backend) {
+        qCritical() << "Google Play purchase callback received but backend instance is null";
+        return;
+    }
 
-    GooglePlayStoreTransaction * transaction = new GooglePlayStoreTransaction(json, AbstractStoreBackend::instance());
-    emit GooglePlayStoreBackend::instance()->purchaseRestored(transaction);
+    const char* jsonCStr = env->GetStringUTFChars(message, nullptr);
+    QJsonObject json = QJsonDocument::fromJson(jsonCStr).object();
+    env->ReleaseStringUTFChars(message, jsonCStr);
+
+    GooglePlayStoreTransaction * transaction = new GooglePlayStoreTransaction(json, backend);
+    emit backend->purchaseRestored(transaction);
 }
 
 /*static*/ void GooglePlayStoreBackend::purchaseFailed(JNIEnv *env, jobject object, jint billingResponseCode)
 {
-    emit GooglePlayStoreBackend::instance()->purchaseFailed(billingResponseCode);
+    GooglePlayStoreBackend* backend = GooglePlayStoreBackend::s_currentInstance;
+    if (!backend) {
+        qCritical() << "Google Play purchase callback received but backend instance is null";
+        return;
+    }
+
+    emit backend->purchaseFailed(billingResponseCode);
 }
 
 /*static*/ void GooglePlayStoreBackend::purchaseConsumed(JNIEnv *env, jobject object, jstring message)
 {
-    QJsonObject json = QJsonDocument::fromJson(env->GetStringUTFChars(message, nullptr)).object();
+    GooglePlayStoreBackend* backend = GooglePlayStoreBackend::s_currentInstance;
+    if (!backend) {
+        qCritical() << "Google Play purchase callback received but backend instance is null";
+        return;
+    }
 
-    GooglePlayStoreTransaction * transaction = new GooglePlayStoreTransaction(json, AbstractStoreBackend::instance());
-    emit GooglePlayStoreBackend::instance()->purchaseConsumed(transaction);
+    const char* jsonCStr = env->GetStringUTFChars(message, nullptr);
+    QJsonObject json = QJsonDocument::fromJson(jsonCStr).object();
+    env->ReleaseStringUTFChars(message, jsonCStr);
+
+    GooglePlayStoreTransaction * transaction = new GooglePlayStoreTransaction(json, backend);
+    emit backend->purchaseConsumed(transaction);
 }
-

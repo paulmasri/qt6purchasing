@@ -19,7 +19,8 @@ public:
     void purchaseProduct(AbstractProduct * product) override;
     void consumePurchase(AbstractTransaction * transaction) override;
 
-//    void emitProductRegistered(AbstractProduct * product);
+    static AppleAppStoreBackend * s_currentInstance;
+
 private:
     InAppPurchaseManager * _iapManager = nullptr;
 
