@@ -2,11 +2,14 @@
 
 #import <StoreKit/StoreKit.h>
 
-AppleAppStoreTransaction::AppleAppStoreTransaction(SKPaymentTransaction * transaction, QObject * parent) : AbstractTransaction(QString::fromNSString(transaction.transactionIdentifier), parent),
+AppleAppStoreTransaction::AppleAppStoreTransaction(Transaction * transaction, QObject * parent) : AbstractTransaction(QString::number(transaction.id), parent),
     _nativeTransaction(transaction)
 {}
 
 QString AppleAppStoreTransaction::productId() const
 {
-    return QString::fromNSString(_nativeTransaction.payment.productIdentifier);
+    if (_nativeTransaction) {
+        return QString::fromNSString(_nativeTransaction.productID);
+    }
+    return QString();
 }

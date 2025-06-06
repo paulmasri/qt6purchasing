@@ -3,7 +3,7 @@
 AppleAppStoreProduct::AppleAppStoreProduct(QObject * parent) : AbstractProduct(parent)
 {}
 
-void AppleAppStoreProduct::setNativeProduct(SKProduct * np)
+void AppleAppStoreProduct::setNativeProduct(Product * product)
 {
-    _nativeProduct = np;
+    _nativeProduct = product;
 }
