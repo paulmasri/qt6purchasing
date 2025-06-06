@@ -34,8 +34,6 @@ AppleAppStoreBackend* AppleAppStoreBackend::s_currentInstance = nullptr;
 -(void)dealloc
 {
     [[SKPaymentQueue defaultQueue] removeTransactionObserver:self];
-    [pendingTransactions release];
-    [super dealloc];
 }
 
 -(void)requestProductData:(NSString *)identifier
@@ -74,7 +72,6 @@ AppleAppStoreBackend* AppleAppStoreBackend::s_currentInstance = nullptr;
             [numberFormatter setNumberStyle:NSNumberFormatterCurrencyStyle];
             [numberFormatter setLocale:skProduct.priceLocale];
             NSString * localizedPrice = [numberFormatter stringFromNumber:skProduct.price];
-            [numberFormatter release];
 
             product->setNativeProduct(skProduct);
             product->setDescription(QString::fromNSString(skProduct.localizedDescription));
@@ -136,8 +133,6 @@ AppleAppStoreBackend::~AppleAppStoreBackend()
 {
     if (s_currentInstance == this)
         s_currentInstance = nullptr;
-
-    [_iapManager release];
 }
 
 void AppleAppStoreBackend::startConnection()
