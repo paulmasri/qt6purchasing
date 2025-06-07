@@ -61,13 +61,13 @@ AppleAppStoreBackend* AppleAppStoreBackend::s_currentInstance = nullptr;
         }
 
         Product * nativeProduct = [products firstObject];
-        AppleAppStoreProduct * qtProduct = reinterpret_cast<AppleAppStoreProduct*>(backend->product(QString::fromNSString(nativeProduct.id)));
+        AppleAppStoreProduct * qtProduct = reinterpret_cast<AppleAppStoreProduct*>(backend->product(QString::fromNSString([nativeProduct id])));
 
         if (qtProduct) {
             qtProduct->setNativeProduct(nativeProduct);
-            qtProduct->setDescription(QString::fromNSString(nativeProduct.description));
-            qtProduct->setPrice(QString::fromNSString(nativeProduct.displayPrice));
-            qtProduct->setTitle(QString::fromNSString(nativeProduct.displayName));
+            qtProduct->setDescription(QString::fromNSString([nativeProduct description]));
+            qtProduct->setPrice(QString::fromNSString([nativeProduct displayPrice]));
+            qtProduct->setTitle(QString::fromNSString([nativeProduct displayName]));
             qtProduct->setStatus(AbstractProduct::Registered);
 
             QMetaObject::invokeMethod(backend, "productRegistered", Qt::AutoConnection, Q_ARG(AbstractProduct*, qtProduct));
@@ -90,12 +90,12 @@ AppleAppStoreBackend* AppleAppStoreBackend::s_currentInstance = nullptr;
             if ([transaction verifyTransaction]) {
                 AppleAppStoreTransaction * ta = new AppleAppStoreTransaction(transaction, backend);
 
-                switch (transaction.transactionState) {
+                switch ([transaction transactionState]) {
                 case TransactionStatePurchased:
                     QMetaObject::invokeMethod(backend, "purchaseSucceeded", Qt::AutoConnection, Q_ARG(AbstractTransaction*, ta));
                     break;
                 case TransactionStateFailed:
-                    QMetaObject::invokeMethod(backend, "purchaseFailed", Qt::AutoConnection, Q_ARG(int, transaction.error.code));
+                    QMetaObject::invokeMethod(backend, "purchaseFailed", Qt::AutoConnection, Q_ARG(int, [[transaction error] code]));
                     break;
                 case TransactionStateRestored:
                     QMetaObject::invokeMethod(backend, "purchaseRestored", Qt::AutoConnection, Q_ARG(AbstractTransaction*, ta));
@@ -105,7 +105,7 @@ AppleAppStoreBackend* AppleAppStoreBackend::s_currentInstance = nullptr;
                     break;
                 }
             } else {
-                qWarning() << "Transaction verification failed for transaction ID:" << transaction.id;
+                qWarning() << "Transaction verification failed for transaction ID:" << [transaction originalTransactionID];
             }
         }
     }];
@@ -147,9 +147,9 @@ void AppleAppStoreBackend::purchaseProduct(AbstractProduct * product)
     if (nativeProduct) {
         [Product purchaseProduct:nativeProduct completionHandler:^(Product * _Nullable purchasedProduct, NSError * _Nullable error) {
             if (error) {
-                QMetaObject::invokeMethod(this, "purchaseFailed", Qt::AutoConnection, Q_ARG(int, error.code));
+                QMetaObject::invokeMethod(this, "purchaseFailed", Qt::AutoConnection, Q_ARG(int, [error code]));
             } else {
-                qDebug() << "Purchase initiated for product:" << QString::fromNSString(purchasedProduct.id);
+                qDebug() << "Purchase initiated for product:" << QString::fromNSString([purchasedProduct id]);
             }
         }];
     } else {
