@@ -64,6 +64,23 @@ elseif(APPLE)
         PROPERTIES
         COMPILE_FLAGS "-fobjc-arc"
     )
+elseif(WIN32)
+    # Windows Runtime libraries for Microsoft Store APIs
+    find_library(WINDOWSAPPLIB WindowsApp)
+    list(APPEND PLATFORM_LIBS ${WINDOWSAPPLIB})
+
+    list(APPEND PLATFORM_SOURCES
+        windows/microsoftstorebackend.cpp
+        windows/microsoftstoreproduct.cpp
+        windows/microsoftstoretransaction.cpp
+    )
+    list(APPEND PLATFORM_HEADERS
+        windows/microsoftstorebackend.h
+        windows/microsoftstoreproduct.h
+        windows/microsoftstoretransaction.h
+    )
+
+    set(PLATFORM_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR}/windows)
 endif()
 
 # The public-facing library
