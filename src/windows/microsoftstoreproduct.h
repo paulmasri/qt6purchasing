@@ -4,9 +4,7 @@
 #include <qt6purchasing/abstractproduct.h>
 
 // Forward declaration to avoid WinRT headers in public interface
-namespace winrt::Windows::Services::Store {
-    struct StoreProduct;
-}
+class WindowsStoreProductWrapper;
 
 class MicrosoftStoreProduct : public AbstractProduct
 {
@@ -15,13 +13,14 @@ class MicrosoftStoreProduct : public AbstractProduct
 
 public:
     explicit MicrosoftStoreProduct(QObject * parent = nullptr);
+    ~MicrosoftStoreProduct();
 
     // Microsoft Store specific methods
-    void setStoreProduct(const winrt::Windows::Services::Store::StoreProduct& product);
-    winrt::Windows::Services::Store::StoreProduct* storeProduct() const;
+    void setStoreProduct(WindowsStoreProductWrapper * product);
+    WindowsStoreProductWrapper * storeProduct() const;
 
 private:
-    winrt::Windows::Services::Store::StoreProduct m_storeProduct{nullptr};
+    WindowsStoreProductWrapper * _storeProduct = nullptr;
 };
 
 #endif // MICROSOFTSTOREPRODUCT_H

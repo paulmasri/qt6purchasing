@@ -4,9 +4,7 @@
 #include <qt6purchasing/abstracttransaction.h>
 
 // Forward declaration
-namespace winrt::Windows::Services::Store {
-    struct StorePurchaseResult;
-}
+class WindowsStorePurchaseResultWrapper;
 
 class MicrosoftStoreTransaction : public AbstractTransaction
 {
@@ -17,14 +15,15 @@ class MicrosoftStoreTransaction : public AbstractTransaction
 public:
     enum MicrosoftStoreTransactionStatus {
         Succeeded = 0,
-        UserCanceled = 1,
-        NetworkError = 2,
-        ServerError = 3,
+        AlreadyPurchased = 1,
+        NotPurchased = 2,
+        NetworkError = 3,
+        ServerError = 4,
         Unknown = 99
     };
     Q_ENUM(MicrosoftStoreTransactionStatus)
 
-    MicrosoftStoreTransaction(const winrt::Windows::Services::Store::StorePurchaseResult& result,
+    MicrosoftStoreTransaction(WindowsStorePurchaseResultWrapper * result,
                             const QString& productId, 
                             QObject * parent = nullptr);
     
@@ -32,14 +31,16 @@ public:
     MicrosoftStoreTransaction(const QString& orderId,
                             const QString& productId,
                             QObject * parent = nullptr);
+    
+    ~MicrosoftStoreTransaction();
 
     QString productId() const override;
 
 private:
-    winrt::Windows::Services::Store::StorePurchaseResult m_purchaseResult{nullptr};
-    QString m_productId;
+    WindowsStorePurchaseResultWrapper * _purchaseResult = nullptr;
+    QString _productId;
     
-    static QString generateOrderId(const winrt::Windows::Services::Store::StorePurchaseResult& result, 
+    static QString generateOrderId(WindowsStorePurchaseResultWrapper * result, 
                                   const QString& productId);
 };
 
