@@ -1,10 +1,14 @@
 #include "microsoftstorebackend.h"
 #include "microsoftstoreproduct.h"
 #include "microsoftstoretransaction.h"
+#include "windowsstorewrappers.h"
 
 #include <QDebug>
 #include <QTimer>
 #include <QCoreApplication>
+#include <QThread>
+#include <optional>
+#include <chrono>
 
 // WinRT includes - only in implementation
 #include <winrt/base.h>
@@ -16,16 +20,84 @@ using namespace winrt;
 using namespace Windows::Foundation;
 using namespace Windows::Services::Store;
 
+// Windows Store Manager - handles all WinRT operations
+class WindowsStoreManager {
+public:
+    WindowsStoreManager() : _storeContext{nullptr} {}
+    
+    ~WindowsStoreManager() = default;
+    
+    bool initialize() {
+        try {
+            _storeContext = StoreContext::GetDefault();
+            return _storeContext != nullptr;
+        } catch (...) {
+            return false;
+        }
+    }
+    
+    bool isConnected() const {
+        return _storeContext != nullptr;
+    }
+    
+    IAsyncOperation<StoreProductQueryResult> getStoreProductsAsync(const std::vector<hstring>& productIds) {
+        std::vector<hstring> productKinds = { L"Durable", L"UnmanagedConsumable" };
+        std::vector<hstring> productIdsCopy = productIds; // Create copies for move
+        return _storeContext.GetStoreProductsAsync(std::move(productKinds), std::move(productIdsCopy));
+    }
+    
+    IAsyncOperation<StorePurchaseResult> requestPurchaseAsync(const hstring& productId) {
+        return _storeContext.RequestPurchaseAsync(productId);
+    }
+    
+    IAsyncOperation<StoreProductQueryResult> getUserCollectionAsync() {
+        std::vector<hstring> productKinds = { L"Durable", L"UnmanagedConsumable" };
+        return _storeContext.GetUserCollectionAsync(std::move(productKinds));
+    }
+    
+private:
+    StoreContext _storeContext;
+};
+
+
+// Helper functions for handling WinRT results
+static void handleProductQueryResult(MicrosoftStoreBackend* backend, AbstractProduct* product, 
+                                   const StoreProductQueryResult& result);
+static void handlePurchaseResult(MicrosoftStoreBackend* backend, const StorePurchaseResult& result, 
+                               const QString& productId);
+
+// Helper function template - must be declared before use
+template<typename T>
+std::optional<T> waitForStoreOperation(IAsyncOperation<T> operation, int timeoutMs = 10000)
+{
+    try {
+        auto status = operation.wait_for(std::chrono::milliseconds(timeoutMs));
+        
+        if (status == AsyncStatus::Completed) {
+            return operation.GetResults();
+        } else {
+            qWarning() << "Store operation timed out after" << timeoutMs << "ms";
+            // Attempt to cancel (may not always work)
+            operation.Cancel();
+            return std::nullopt;
+        }
+    } catch (...) {
+        qWarning() << "Exception during store operation wait";
+        return std::nullopt;
+    }
+}
+
 MicrosoftStoreBackend * MicrosoftStoreBackend::s_currentInstance = nullptr;
 
 MicrosoftStoreBackend::MicrosoftStoreBackend(QObject * parent) 
-    : AbstractStoreBackend(parent), m_storeContext{nullptr}
+    : AbstractStoreBackend(parent), _storeManager(nullptr)
 {
     qDebug() << "Creating Microsoft Store backend";
     
     Q_ASSERT(QThread::currentThread() == QCoreApplication::instance()->thread());
     s_currentInstance = this;
     
+    _storeManager = new WindowsStoreManager();
     startConnection();
 }
 
@@ -34,6 +106,7 @@ MicrosoftStoreBackend::~MicrosoftStoreBackend()
     if (s_currentInstance == this)
         s_currentInstance = nullptr;
         
+    delete _storeManager;
     qDebug() << "Destroying Microsoft Store backend";
 }
 
@@ -41,9 +114,8 @@ void MicrosoftStoreBackend::startConnection()
 {
     try {
         qDebug() << "Initializing Microsoft Store connection";
-        m_storeContext = StoreContext::GetDefault();
         
-        if (m_storeContext) {
+        if (_storeManager && _storeManager->initialize()) {
             setConnected(true);
             qDebug() << "Microsoft Store connection established";
         } else {
@@ -52,7 +124,7 @@ void MicrosoftStoreBackend::startConnection()
         }
     } catch (hresult_error const& ex) {
         qCritical() << "Microsoft Store initialization failed:" 
-                   << QString::fromStdWString(ex.message());
+                   << QString::fromStdWString(ex.message().c_str());
         setConnected(false);
     } catch (...) {
         qCritical() << "Unknown error during Microsoft Store initialization";
@@ -84,13 +156,13 @@ void MicrosoftStoreBackend::registerProductSync(AbstractProduct* product)
         productIds.push_back(winrt::to_hstring(product->identifier().toStdString()));
         
         // Query store for product information
-        auto asyncOp = m_storeContext.GetStoreProductsAsync(productIds);
+        auto asyncOp = _storeManager->getStoreProductsAsync(productIds);
         
         // Wait synchronously with timeout
         auto result = waitForStoreOperation(asyncOp, 10000); // 10 second timeout
         
         if (result.has_value()) {
-            handleProductQueryResult(product, result.value());
+            handleProductQueryResult(this, product, result.value());
         } else {
             qWarning() << "Product registration timed out:" << product->identifier();
             product->setStatus(AbstractProduct::Unknown);
@@ -98,7 +170,7 @@ void MicrosoftStoreBackend::registerProductSync(AbstractProduct* product)
         
     } catch (hresult_error const& ex) {
         qCritical() << "WinRT error during product registration:" 
-                   << QString::fromWCharArray(ex.message().c_str())
+                   << QString::fromStdWString(ex.message().c_str())
                    << "HRESULT:" << Qt::hex << ex.code();
         product->setStatus(AbstractProduct::Unknown);
     } catch (...) {
@@ -107,10 +179,10 @@ void MicrosoftStoreBackend::registerProductSync(AbstractProduct* product)
     }
 }
 
-void MicrosoftStoreBackend::handleProductQueryResult(AbstractProduct* product, 
-                                                   const StoreProductQueryResult& result)
+static void handleProductQueryResult(MicrosoftStoreBackend* backend, AbstractProduct* product, 
+                                   const StoreProductQueryResult& result)
 {
-    if (result.HasError()) {
+    if (result.ExtendedError()) {
         qWarning() << "Store query error for product:" << product->identifier();
         product->setStatus(AbstractProduct::Unknown);
         return;
@@ -124,23 +196,25 @@ void MicrosoftStoreBackend::handleProductQueryResult(AbstractProduct* product,
         auto msProduct = qobject_cast<MicrosoftStoreProduct*>(product);
         
         if (msProduct) {
-            // Set Microsoft-specific data
-            msProduct->setStoreProduct(storeProduct);
+            // Create wrapper for Microsoft-specific data
+            auto * productWrapper = new WindowsStoreProductWrapper(storeProduct);
+            msProduct->setStoreProduct(productWrapper);
             
             // Set common product data
-            product->setTitle(QString::fromStdWString(storeProduct.Title()));
-            product->setDescription(QString::fromStdWString(storeProduct.Description()));
-            product->setPrice(QString::fromStdWString(storeProduct.Price().FormattedPrice()));
+            product->setTitle(productWrapper->title());
+            product->setDescription(productWrapper->description());
+            product->setPrice(productWrapper->price());
             
             // Map Microsoft product types to library types
-            if (storeProduct.ProductKind() == StoreProductKind::Durable) {
+            auto productKind = productWrapper->productKind();
+            if (productKind == "Durable") {
                 product->setProductType(AbstractProduct::Unlockable);
-            } else if (storeProduct.ProductKind() == StoreProductKind::UnmanagedConsumable) {
+            } else if (productKind == "UnmanagedConsumable") {
                 product->setProductType(AbstractProduct::Consumable);
             }
             
             product->setStatus(AbstractProduct::Registered);
-            emit productRegistered(product);
+            emit backend->productRegistered(product);
             
             qDebug() << "Product registered successfully:" << product->identifier();
         }
@@ -159,7 +233,7 @@ void MicrosoftStoreBackend::purchaseProduct(AbstractProduct * product)
     }
     
     auto msProduct = qobject_cast<MicrosoftStoreProduct*>(product);
-    if (!msProduct || !msProduct->storeProduct()) {
+    if (!msProduct) {
         qWarning() << "Invalid Microsoft Store product for purchase";
         emit purchaseFailed(static_cast<int>(UnknownError));
         return;
@@ -169,7 +243,7 @@ void MicrosoftStoreBackend::purchaseProduct(AbstractProduct * product)
         qDebug() << "Initiating purchase for:" << product->identifier();
         
         // This launches the Store purchase dialog and returns quickly
-        auto asyncOp = m_storeContext.RequestPurchaseAsync(
+        auto asyncOp = _storeManager->requestPurchaseAsync(
             winrt::to_hstring(product->identifier().toStdString())
         );
         
@@ -177,44 +251,46 @@ void MicrosoftStoreBackend::purchaseProduct(AbstractProduct * product)
         auto result = waitForStoreOperation(asyncOp, 5000); // 5 second timeout
         
         if (result.has_value()) {
-            handlePurchaseResult(result.value(), product->identifier());
+            handlePurchaseResult(this, result.value(), product->identifier());
         } else {
             qWarning() << "Purchase request timed out:" << product->identifier();
             emit purchaseFailed(static_cast<int>(ServiceUnavailable));
         }
         
     } catch (hresult_error const& ex) {
-        qCritical() << "WinRT error during purchase:" 
-                   << QString::fromStdWString(ex.message());
-        emit purchaseFailed(mapStoreError(ex.code()));
+        qCritical() << "WinRT error during purchase:"
+                   << QString::fromStdWString(ex.message().c_str());
+        emit purchaseFailed(mapStoreError(static_cast<uint32_t>(ex.code())));
     } catch (...) {
         qCritical() << "Unknown error during purchase";
         emit purchaseFailed(static_cast<int>(UnknownError));
     }
 }
 
-void MicrosoftStoreBackend::handlePurchaseResult(const StorePurchaseResult& result, 
-                                               const QString& productId)
+static void handlePurchaseResult(MicrosoftStoreBackend* backend, const StorePurchaseResult& result, 
+                               const QString& productId)
 {
     qDebug() << "Purchase result status:" << static_cast<int>(result.Status());
     
     switch (result.Status()) {
         case StorePurchaseStatus::Succeeded: {
-            auto transaction = new MicrosoftStoreTransaction(result, productId, this);
-            emit purchaseSucceeded(transaction);
+            auto * resultWrapper = new WindowsStorePurchaseResultWrapper(result);
+            auto transaction = new MicrosoftStoreTransaction(resultWrapper, productId, backend);
+            emit backend->purchaseSucceeded(transaction);
             break;
         }
-        case StorePurchaseStatus::UserCanceled:
-            emit purchaseFailed(static_cast<int>(UserCanceled));
+        case StorePurchaseStatus::AlreadyPurchased:
+        case StorePurchaseStatus::NotPurchased:
+            emit backend->purchaseFailed(static_cast<int>(MicrosoftStoreBackend::StoreErrorCode::UserCanceled));
             break;
         case StorePurchaseStatus::NetworkError:
-            emit purchaseFailed(static_cast<int>(NetworkError));
+            emit backend->purchaseFailed(static_cast<int>(MicrosoftStoreBackend::StoreErrorCode::NetworkError));
             break;
         case StorePurchaseStatus::ServerError:
-            emit purchaseFailed(static_cast<int>(ServiceUnavailable));
+            emit backend->purchaseFailed(static_cast<int>(MicrosoftStoreBackend::StoreErrorCode::ServiceUnavailable));
             break;
         default:
-            emit purchaseFailed(static_cast<int>(UnknownError));
+            emit backend->purchaseFailed(static_cast<int>(MicrosoftStoreBackend::StoreErrorCode::UnknownError));
             break;
     }
 }
@@ -241,25 +317,25 @@ void MicrosoftStoreBackend::restorePurchases()
         qDebug() << "Restoring Microsoft Store purchases";
         
         // Query all products the user owns
-        auto asyncOp = m_storeContext.GetUserCollectionAsync();
+        auto asyncOp = _storeManager->getUserCollectionAsync();
         auto result = waitForStoreOperation(asyncOp, 10000);
         
         if (result.has_value()) {
             auto collection = result.value();
             
-            if (collection.HasError()) {
+            if (collection.ExtendedError()) {
                 qWarning() << "Error querying user collection for restore";
                 return;
             }
             
             auto products = collection.Products();
-            for (auto [productId, storeProduct] : products) {
-                QString productIdStr = QString::fromStdWString(productId);
+            for (auto&& pair : products) {
+                auto productId = pair.Key();
+                auto storeProduct = pair.Value();
+                QString productIdStr = QString::fromStdWString(productId.c_str());
                 
-                // Generate consistent order ID based on acquisition date
-                QString orderId = QString("ms_%1_%2")
-                    .arg(productIdStr)
-                    .arg(storeProduct.AcquiredDate().time_since_epoch().count());
+                // Generate consistent order ID for restored purchase
+                QString orderId = QString("ms_restored_%1").arg(productIdStr);
                 
                 // Create restored transaction
                 auto transaction = new MicrosoftStoreTransaction(orderId, productIdStr, this);
@@ -273,33 +349,13 @@ void MicrosoftStoreBackend::restorePurchases()
         
     } catch (hresult_error const& ex) {
         qCritical() << "WinRT error during purchase restoration:" 
-                   << QString::fromStdWString(ex.message());
+                   << QString::fromStdWString(ex.message().c_str());
     } catch (...) {
         qCritical() << "Unknown error during purchase restoration";
     }
 }
 
-template<typename T>
-std::optional<T> waitForStoreOperation(IAsyncOperation<T> operation, int timeoutMs = 10000)
-{
-    try {
-        auto status = operation.wait_for(std::chrono::milliseconds(timeoutMs));
-        
-        if (status == AsyncStatus::Completed) {
-            return operation.GetResults();
-        } else {
-            qWarning() << "Store operation timed out after" << timeoutMs << "ms";
-            // Attempt to cancel (may not always work)
-            operation.Cancel();
-            return std::nullopt;
-        }
-    } catch (...) {
-        qWarning() << "Exception during store operation wait";
-        return std::nullopt;
-    }
-}
-
-MicrosoftStoreBackend::StoreErrorCode MicrosoftStoreBackend::mapStoreError(int32_t hresult)
+MicrosoftStoreBackend::StoreErrorCode MicrosoftStoreBackend::mapStoreError(uint32_t hresult)
 {
     // Map common HRESULT values to our error codes
     switch (hresult) {

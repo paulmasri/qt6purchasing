@@ -78,6 +78,7 @@ elseif(WIN32)
         windows/microsoftstorebackend.h
         windows/microsoftstoreproduct.h
         windows/microsoftstoretransaction.h
+        windows/windowsstorewrappers.h
     )
 
     set(PLATFORM_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR}/windows)
@@ -101,6 +102,11 @@ qt_add_library(qt6purchasinglib STATIC
         ${PLATFORM_SOURCES}
         ${PLATFORM_HEADERS}
 )
+
+if(WIN32)
+    # Enable C++20 for coroutines and WinRT
+     set_property(TARGET qt6purchasinglib PROPERTY CXX_STANDARD 20)
+ endif()
 
 qt_add_qml_module(qt6purchasinglib
     URI Qt6Purchasing

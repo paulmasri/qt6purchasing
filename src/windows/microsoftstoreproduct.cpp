@@ -1,19 +1,23 @@
 #include "microsoftstoreproduct.h"
-#include <winrt/Windows.Services.Store.h>
-
-using namespace winrt::Windows::Services::Store;
+#include "windowsstorewrappers.h"
 
 MicrosoftStoreProduct::MicrosoftStoreProduct(QObject * parent) 
-    : AbstractProduct(parent), m_storeProduct{nullptr}
+    : AbstractProduct(parent), _storeProduct(nullptr)
 {
 }
 
-void MicrosoftStoreProduct::setStoreProduct(const StoreProduct& product)
+MicrosoftStoreProduct::~MicrosoftStoreProduct()
 {
-    m_storeProduct = product;
+    delete _storeProduct;
 }
 
-StoreProduct* MicrosoftStoreProduct::storeProduct() const
+void MicrosoftStoreProduct::setStoreProduct(WindowsStoreProductWrapper * product)
 {
-    return m_storeProduct ? &m_storeProduct : nullptr;
+    delete _storeProduct;
+    _storeProduct = product;
+}
+
+WindowsStoreProductWrapper * MicrosoftStoreProduct::storeProduct() const
+{
+    return _storeProduct;
 }

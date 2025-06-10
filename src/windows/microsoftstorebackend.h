@@ -4,12 +4,8 @@
 #include <qt6purchasing/abstractstorebackend.h>
 #include <QTimer>
 
-// Forward declarations to avoid WinRT headers in public interface
-namespace winrt::Windows::Services::Store {
-    struct StoreContext;
-    struct StoreProductQueryResult;
-    struct StorePurchaseResult;
-}
+// Forward declaration to avoid WinRT headers in public interface
+class WindowsStoreManager;
 
 class MicrosoftStoreBackend : public AbstractStoreBackend
 {
@@ -38,14 +34,10 @@ public:
     static MicrosoftStoreBackend * s_currentInstance;
 
 private:
-    winrt::Windows::Services::Store::StoreContext m_storeContext{nullptr};
+    WindowsStoreManager * _storeManager = nullptr;
 
     void registerProductSync(AbstractProduct* product);
-    void handleProductQueryResult(AbstractProduct* product, 
-                                const winrt::Windows::Services::Store::StoreProductQueryResult& result);
-    void handlePurchaseResult(const winrt::Windows::Services::Store::StorePurchaseResult& result, 
-                            const QString& productId);
-    StoreErrorCode mapStoreError(int32_t hresult);
+    StoreErrorCode mapStoreError(uint32_t hresult);
 };
 
 #endif // MICROSOFTSTOREBACKEND_H
