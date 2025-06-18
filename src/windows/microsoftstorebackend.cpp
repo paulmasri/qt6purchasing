@@ -15,6 +15,7 @@
 #include <winrt/Windows.Services.Store.h>
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.Foundation.Collections.h>
+#include <winrt/Windows.ApplicationModel.h>
 
 using namespace winrt;
 using namespace Windows::Foundation;
@@ -29,23 +30,89 @@ public:
     
     bool initialize() {
         try {
+            qDebug() << "Getting Store context...";
+            
+            // Check if running in packaged context
+            try {
+                auto package = Windows::ApplicationModel::Package::Current();
+                auto packageId = package.Id();
+                qDebug() << "Running as packaged app:";
+                qDebug() << "  Package Name:" << QString::fromStdWString(packageId.Name().c_str());
+                qDebug() << "  Family Name:" << QString::fromStdWString(packageId.FamilyName().c_str());
+                qDebug() << "  Publisher:" << QString::fromStdWString(packageId.Publisher().c_str());
+                qDebug() << "  Version:" << packageId.Version().Major << "." 
+                         << packageId.Version().Minor << "." 
+                         << packageId.Version().Build << "."
+                         << packageId.Version().Revision;
+                qDebug() << "  Architecture:" << static_cast<int>(packageId.Architecture());
+                
+                // Check install location
+                auto installLocation = package.InstalledLocation();
+                qDebug() << "  Install Path:" << QString::fromStdWString(installLocation.Path().c_str());
+            } catch (const std::exception& e) {
+                qDebug() << "NOT running as packaged app - Exception:" << e.what();
+                qDebug() << "Store features require app to be installed from .appx/.msix package";
+            } catch (...) {
+                qDebug() << "NOT running as packaged app - Unknown exception";
+            }
+            
             _storeContext = StoreContext::GetDefault();
             
             if (_storeContext != nullptr) {
+                qDebug() << "Store context obtained successfully";
+                
+                // Check user context
                 try {
                     auto user = _storeContext.User();
                     if (user != nullptr) {
                         qDebug() << "Store context has user";
+                        // Try to get more user info
+                        try {
+                            auto kind = user.AuthenticationStatus();
+                            qDebug() << "  User authentication status:" << static_cast<int>(kind);
+                        } catch (...) {
+                            qDebug() << "  Could not get user authentication status";
+                        }
                     } else {
-                        qDebug() << "Store context has no user (running as system?)";
+                        qDebug() << "Store context has no user (running as system or in development mode?)";
+                        qDebug() << "This may limit Store functionality. Ensure:";
+                        qDebug() << "  1. App is installed from .appx package (not running .exe directly)";
+                        qDebug() << "  2. App is associated with Microsoft Store listing";
+                        qDebug() << "  3. Running with normal user privileges";
+                        qDebug() << "  4. Windows Store services are running";
                     }
+                } catch (const std::exception& e) {
+                    qDebug() << "Exception getting user from store context:" << e.what();
                 } catch (...) {
-                    qDebug() << "Could not get user from store context";
+                    qDebug() << "Unknown exception getting user from store context";
                 }
+                
+                // Try to get Store info
+                try {
+                    auto storeAppLicense = _storeContext.GetAppLicenseAsync().get();
+                    if (storeAppLicense != nullptr) {
+                        qDebug() << "App license info:";
+                        qDebug() << "  Is active:" << storeAppLicense.IsActive();
+                        qDebug() << "  Is trial:" << storeAppLicense.IsTrial();
+                        if (!storeAppLicense.StoreId().empty()) {
+                            qDebug() << "  Store ID:" << QString::fromStdWString(storeAppLicense.StoreId().c_str());
+                        }
+                    }
+                } catch (const std::exception& e) {
+                    qDebug() << "Exception getting app license:" << e.what();
+                } catch (...) {
+                    qDebug() << "Unknown exception getting app license";
+                }
+            } else {
+                qDebug() << "Failed to get Store context - null pointer returned";
             }
             
             return _storeContext != nullptr;
+        } catch (const std::exception& e) {
+            qDebug() << "Exception during Store initialization:" << e.what();
+            return false;
         } catch (...) {
+            qDebug() << "Unknown exception during Store initialization";
             return false;
         }
     }
@@ -91,6 +158,11 @@ std::optional<T> waitForStoreOperation(IAsyncOperation<T> operation, int timeout
             return operation.GetResults();
         } else {
             qWarning() << "Store operation timed out after" << timeoutMs << "ms";
+            qWarning() << "  Status:" << static_cast<int>(status);
+            qWarning() << "  This often indicates:";
+            qWarning() << "    - No network connection to Microsoft Store";
+            qWarning() << "    - Store services not running";
+            qWarning() << "    - App not properly signed/packaged";
             // Attempt to cancel (may not always work)
             operation.Cancel();
             return std::nullopt;
@@ -185,11 +257,15 @@ void MicrosoftStoreBackend::registerProduct(AbstractProduct * product)
 void MicrosoftStoreBackend::registerProductSync(AbstractProduct* product)
 {
     try {
-        qDebug() << "Registering product:" << product->identifier();
+        qDebug() << "=== REGISTERING PRODUCT ===" ;
+        qDebug() << "  Identifier:" << product->identifier();
+        qDebug() << "  Type:" << (product->productType() == AbstractProduct::Consumable ? "Consumable" : "Unlockable");
         
         // Create product identifier list
         std::vector<hstring> productIds;
         productIds.push_back(winrt::to_hstring(product->identifier().toStdString()));
+        
+        qDebug() << "  Querying Microsoft Store for product...";
         
         // Query store for product information
         auto asyncOp = _storeManager->getStoreProductsAsync(productIds);
@@ -198,9 +274,10 @@ void MicrosoftStoreBackend::registerProductSync(AbstractProduct* product)
         auto result = waitForStoreOperation(asyncOp, 10000); // 10 second timeout
         
         if (result.has_value()) {
+            qDebug() << "  Query completed successfully";
             handleProductQueryResult(this, product, result.value());
         } else {
-            qWarning() << "Product registration timed out:" << product->identifier();
+            qWarning() << "  Product registration TIMED OUT after 10 seconds:" << product->identifier();
             product->setStatus(AbstractProduct::Unknown);
         }
         
@@ -228,9 +305,23 @@ static void handleProductQueryResult(MicrosoftStoreBackend* backend, AbstractPro
     auto products = result.Products();
     auto productId = winrt::to_hstring(product->identifier().toStdString());
     
-    qDebug() << "Query returned" << products.Size() << "products";
-    for (auto const& item : products) {
-        qDebug() << "Found product in store:" << QString::fromStdWString(item.Key().c_str());
+    qDebug() << "  Query returned" << products.Size() << "product(s) for identifier:" << product->identifier();
+    
+    // List all returned products for debugging
+    if (products.Size() > 0) {
+        for (auto const& item : products) {
+            auto storeProduct = item.Value();
+            qDebug() << "  Found product:";
+            qDebug() << "    Store ID:" << QString::fromStdWString(item.Key().c_str());
+            qDebug() << "    Title:" << QString::fromStdWString(storeProduct.Title().c_str());
+            qDebug() << "    Price:" << QString::fromStdWString(storeProduct.Price().FormattedPrice().c_str());
+            qDebug() << "    Product Kind:" << QString::fromStdWString(storeProduct.ProductKind().c_str());
+        }
+    } else {
+        qDebug() << "  No products found. Possible reasons:";
+        qDebug() << "    1. Product ID mismatch between app and Store listing";
+        qDebug() << "    2. Product not published or not available in current market";
+        qDebug() << "    3. App not properly associated with Store listing";
     }
     
     if (products.HasKey(productId)) {
