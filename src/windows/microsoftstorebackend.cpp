@@ -30,6 +30,20 @@ public:
     bool initialize() {
         try {
             _storeContext = StoreContext::GetDefault();
+            
+            if (_storeContext != nullptr) {
+                try {
+                    auto user = _storeContext.User();
+                    if (user != nullptr) {
+                        qDebug() << "Store context has user";
+                    } else {
+                        qDebug() << "Store context has no user (running as system?)";
+                    }
+                } catch (...) {
+                    qDebug() << "Could not get user from store context";
+                }
+            }
+            
             return _storeContext != nullptr;
         } catch (...) {
             return false;
@@ -118,6 +132,28 @@ void MicrosoftStoreBackend::startConnection()
         if (_storeManager && _storeManager->initialize()) {
             setConnected(true);
             qDebug() << "Microsoft Store connection established";
+            
+            // Debug: List all associated products
+            try {
+                auto asyncOp = _storeManager->getStoreProductsAsync({});
+                auto result = waitForStoreOperation(asyncOp, 10000);
+                
+                if (result.has_value()) {
+                    auto queryResult = result.value();
+                    if (!queryResult.ExtendedError()) {
+                        auto products = queryResult.Products();
+                        qDebug() << "Total add-ons found for this app:" << products.Size();
+                        for (auto const& item : products) {
+                            qDebug() << "Available add-on:" << QString::fromStdWString(item.Key().c_str())
+                                     << "Title:" << QString::fromStdWString(item.Value().Title().c_str());
+                        }
+                    } else {
+                        qDebug() << "Error querying all add-ons:" << Qt::hex << queryResult.ExtendedError().value;
+                    }
+                }
+            } catch (...) {
+                qDebug() << "Exception while querying all add-ons";
+            }
         } else {
             qWarning() << "Failed to get Microsoft Store context";
             setConnected(false);
@@ -183,13 +219,19 @@ static void handleProductQueryResult(MicrosoftStoreBackend* backend, AbstractPro
                                    const StoreProductQueryResult& result)
 {
     if (result.ExtendedError()) {
-        qWarning() << "Store query error for product:" << product->identifier();
+        qWarning() << "Store query error for product:" << product->identifier()
+                   << "Error code:" << Qt::hex << result.ExtendedError().value;
         product->setStatus(AbstractProduct::Unknown);
         return;
     }
     
     auto products = result.Products();
     auto productId = winrt::to_hstring(product->identifier().toStdString());
+    
+    qDebug() << "Query returned" << products.Size() << "products";
+    for (auto const& item : products) {
+        qDebug() << "Found product in store:" << QString::fromStdWString(item.Key().c_str());
+    }
     
     if (products.HasKey(productId)) {
         auto storeProduct = products.Lookup(productId);
