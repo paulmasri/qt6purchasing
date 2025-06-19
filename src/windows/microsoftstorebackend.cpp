@@ -31,7 +31,7 @@ using namespace winrt::Windows::Services::Store;
 using Microsoft::WRL::ComPtr;
 
 // Helper function to get application window handle
-static HWND getApplicationWindowHandle() {
+static HWND getApplicationWindowHandle(bool requireVisible = false) {
     auto app = qobject_cast<QGuiApplication*>(QCoreApplication::instance());
     if (!app) {
         qDebug() << "No QGuiApplication instance found";
@@ -39,29 +39,42 @@ static HWND getApplicationWindowHandle() {
     }
     
     auto windows = app->topLevelWindows();
-    qDebug() << "Found" << windows.size() << "top-level windows";
+    qDebug() << "Found" << windows.size() << "top-level window(s)";
     if (windows.isEmpty()) {
         qDebug() << "No top-level windows found";
         return nullptr;
     }
     
+    // Debug window states
+    for (int i = 0; i < windows.size(); ++i) {
+        auto window = windows[i];
+        if (window) {
+            qDebug() << "  Window" << i << ":"
+                     << "visible=" << window->isVisible()
+                     << "active=" << window->isActive()
+                     << "exposed=" << window->isExposed();
+        }
+    }
+    
     // Get the first visible window
-    for (auto window : windows) {
+    for (auto window : std::as_const(windows)) {
         if (window && window->isVisible()) {
             HWND hwnd = reinterpret_cast<HWND>(window->winId());
-            qDebug() << "Found application window handle:" << hwnd;
+            qDebug() << "Found visible application window handle:" << hwnd;
             return hwnd;
         }
     }
     
-    // If no visible window, try the first window
-    if (!windows.isEmpty()) {
-        HWND hwnd = reinterpret_cast<HWND>(windows.first()->winId());
-        qDebug() << "Using first available window handle:" << hwnd;
+    // If no visible window and we don't require visibility, try the first window
+    if (!requireVisible && !windows.isEmpty()) {
+        auto window = windows.first();
+        HWND hwnd = reinterpret_cast<HWND>(window->winId());
+        qDebug() << "Using first available window handle (not visible):" << hwnd;
+        qDebug() << "WARNING: Window is not visible - Store API may fail";
         return hwnd;
     }
     
-    qDebug() << "No usable window handle found";
+    qDebug() << "No usable window handle found" << (requireVisible ? "(visibility required)" : "");
     return nullptr;
 }
 
@@ -237,9 +250,10 @@ public:
             return _windowInitialized;
         }
         
-        HWND hwnd = getApplicationWindowHandle();
+        // Try to get a visible window this time
+        HWND hwnd = getApplicationWindowHandle(true); // Require visible window
         if (hwnd != nullptr) {
-            qDebug() << "Retrying Store context window initialization...";
+            qDebug() << "Retrying Store context window initialization with visible window...";
             try {
                 auto initializeWithWindow = _storeContext.as<IInitializeWithWindow>();
                 
@@ -248,12 +262,29 @@ public:
                     if (SUCCEEDED(hr)) {
                         qDebug() << "Store context window initialization succeeded on retry";
                         _windowInitialized = true;
+                        
+                        // Check user context again after proper window init
+                        try {
+                            auto user = _storeContext.User();
+                            if (user != nullptr) {
+                                qDebug() << "User context now available after window initialization!";
+                            } else {
+                                qDebug() << "User context still null after window initialization";
+                            }
+                        } catch (...) {
+                            // Ignore
+                        }
+                        
                         return true;
+                    } else {
+                        qDebug() << "Window initialization retry failed. HRESULT:" << Qt::hex << hr;
                     }
                 }
             } catch (...) {
                 // Ignore exceptions on retry
             }
+        } else {
+            qDebug() << "No visible window available for retry";
         }
         return false;
     }
@@ -327,6 +358,15 @@ void MicrosoftStoreBackend::startConnection()
         if (_storeManager && _storeManager->initialize()) {
             setConnected(true);
             qDebug() << "Microsoft Store connection established";
+            
+            // Check if we should defer operations until window is visible
+            HWND hwnd = getApplicationWindowHandle(true); // Check for visible window
+            if (!hwnd) {
+                qDebug() << "WARNING: No visible window during Store initialization";
+                qDebug() << "Deferring product queries until window is visible";
+                // Don't query products yet - wait for window
+                return;
+            }
             
             // Debug: List all associated products
             qDebug() << "Querying Microsoft Store for all app add-ons...";
