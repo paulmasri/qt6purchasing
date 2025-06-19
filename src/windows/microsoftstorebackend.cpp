@@ -26,8 +26,8 @@
 #include <winrt/Windows.System.h>
 
 using namespace winrt;
-using namespace Windows::Foundation;
-using namespace Windows::Services::Store;
+using namespace winrt::Windows::Foundation;
+using namespace winrt::Windows::Services::Store;
 using Microsoft::WRL::ComPtr;
 
 // Helper function to get application window handle
@@ -78,7 +78,7 @@ public:
             
             // Check if running in packaged context
             try {
-                auto package = Windows::ApplicationModel::Package::Current();
+                auto package = winrt::Windows::ApplicationModel::Package::Current();
                 auto packageId = package.Id();
                 qDebug() << "Running as packaged app:";
                 qDebug() << "  Package Name:" << QString::fromStdWString(packageId.Name().c_str());
@@ -116,12 +116,11 @@ public:
                     
                     try {
                         // Query for IInitializeWithWindow interface
-                        ComPtr<IInitializeWithWindow> initializeWithWindow;
-                        HRESULT hr = _storeContext.as<IInitializeWithWindow>(&initializeWithWindow);
+                        auto initializeWithWindow = _storeContext.as<IInitializeWithWindow>();
                         
-                        if (SUCCEEDED(hr) && initializeWithWindow) {
+                        if (initializeWithWindow) {
                             // Initialize with the window handle
-                            hr = initializeWithWindow->Initialize(hwnd);
+                            HRESULT hr = initializeWithWindow->Initialize(hwnd);
                             if (SUCCEEDED(hr)) {
                                 qDebug() << "Store context successfully initialized with window handle";
                                 _windowInitialized = true;
@@ -131,8 +130,7 @@ public:
                                 _windowInitialized = false;
                             }
                         } else {
-                            qWarning() << "Failed to get IInitializeWithWindow interface. HRESULT:" 
-                                      << Qt::hex << hr;
+                            qWarning() << "Failed to get IInitializeWithWindow interface";
                         }
                     } catch (const std::exception& e) {
                         qWarning() << "Exception during IInitializeWithWindow setup:" << e.what();
@@ -232,11 +230,10 @@ public:
         if (hwnd != nullptr) {
             qDebug() << "Retrying Store context window initialization...";
             try {
-                ComPtr<IInitializeWithWindow> initializeWithWindow;
-                HRESULT hr = _storeContext.as<IInitializeWithWindow>(&initializeWithWindow);
+                auto initializeWithWindow = _storeContext.as<IInitializeWithWindow>();
                 
-                if (SUCCEEDED(hr) && initializeWithWindow) {
-                    hr = initializeWithWindow->Initialize(hwnd);
+                if (initializeWithWindow) {
+                    HRESULT hr = initializeWithWindow->Initialize(hwnd);
                     if (SUCCEEDED(hr)) {
                         qDebug() << "Store context window initialization succeeded on retry";
                         _windowInitialized = true;

@@ -4,6 +4,7 @@ project(qt6purchasing LANGUAGES CXX)
 
 find_package(Qt6 6.8 REQUIRED COMPONENTS
     Core
+    Gui
     Qml
 )
 
@@ -123,6 +124,7 @@ target_include_directories(qt6purchasinglib
 target_link_libraries(qt6purchasinglib
     PRIVATE
         Qt6::Core
+        Qt6::Gui
     PUBLIC
         Qt6::Qml
         ${PLATFORM_LIBS}
