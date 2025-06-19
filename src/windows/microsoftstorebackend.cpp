@@ -16,6 +16,8 @@
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.Foundation.Collections.h>
 #include <winrt/Windows.ApplicationModel.h>
+#include <winrt/Windows.Storage.h>
+#include <winrt/Windows.System.h>
 
 using namespace winrt;
 using namespace Windows::Foundation;
@@ -47,8 +49,12 @@ public:
                 qDebug() << "  Architecture:" << static_cast<int>(packageId.Architecture());
                 
                 // Check install location
-                auto installLocation = package.InstalledLocation();
-                qDebug() << "  Install Path:" << QString::fromStdWString(installLocation.Path().c_str());
+                try {
+                    auto installLocation = package.InstalledLocation();
+                    qDebug() << "  Install Path:" << QString::fromStdWString(installLocation.Path().c_str());
+                } catch (...) {
+                    qDebug() << "  Could not get install location";
+                }
             } catch (const std::exception& e) {
                 qDebug() << "NOT running as packaged app - Exception:" << e.what();
                 qDebug() << "Store features require app to be installed from .appx/.msix package";
@@ -67,12 +73,7 @@ public:
                     if (user != nullptr) {
                         qDebug() << "Store context has user";
                         // Try to get more user info
-                        try {
-                            auto kind = user.AuthenticationStatus();
-                            qDebug() << "  User authentication status:" << static_cast<int>(kind);
-                        } catch (...) {
-                            qDebug() << "  Could not get user authentication status";
-                        }
+                        // Note: AuthenticationStatus may not be available in all SDK versions
                     } else {
                         qDebug() << "Store context has no user (running as system or in development mode?)";
                         qDebug() << "This may limit Store functionality. Ensure:";
@@ -94,8 +95,14 @@ public:
                         qDebug() << "App license info:";
                         qDebug() << "  Is active:" << storeAppLicense.IsActive();
                         qDebug() << "  Is trial:" << storeAppLicense.IsTrial();
-                        if (!storeAppLicense.StoreId().empty()) {
-                            qDebug() << "  Store ID:" << QString::fromStdWString(storeAppLicense.StoreId().c_str());
+                        // Note: StoreId property may not be available in all SDK versions
+                        try {
+                            auto extendedJsonData = storeAppLicense.ExtendedJsonData();
+                            if (!extendedJsonData.empty()) {
+                                qDebug() << "  Has extended data";
+                            }
+                        } catch (...) {
+                            // ExtendedJsonData might not be available
                         }
                     }
                 } catch (const std::exception& e) {
