@@ -6,9 +6,15 @@
 #include <QDebug>
 #include <QTimer>
 #include <QCoreApplication>
+#include <QGuiApplication>
+#include <QWindow>
 #include <QThread>
 #include <optional>
 #include <chrono>
+
+// Windows headers for IInitializeWithWindow
+#include <Shobjidl.h>
+#include <wrl/client.h>
 
 // WinRT includes - only in implementation
 #include <winrt/base.h>
@@ -22,11 +28,47 @@
 using namespace winrt;
 using namespace Windows::Foundation;
 using namespace Windows::Services::Store;
+using Microsoft::WRL::ComPtr;
+
+// Helper function to get application window handle
+static HWND getApplicationWindowHandle() {
+    auto app = qobject_cast<QGuiApplication*>(QCoreApplication::instance());
+    if (!app) {
+        qDebug() << "No QGuiApplication instance found";
+        return nullptr;
+    }
+    
+    auto windows = app->topLevelWindows();
+    qDebug() << "Found" << windows.size() << "top-level windows";
+    if (windows.isEmpty()) {
+        qDebug() << "No top-level windows found";
+        return nullptr;
+    }
+    
+    // Get the first visible window
+    for (auto window : windows) {
+        if (window && window->isVisible()) {
+            HWND hwnd = reinterpret_cast<HWND>(window->winId());
+            qDebug() << "Found application window handle:" << hwnd;
+            return hwnd;
+        }
+    }
+    
+    // If no visible window, try the first window
+    if (!windows.isEmpty()) {
+        HWND hwnd = reinterpret_cast<HWND>(windows.first()->winId());
+        qDebug() << "Using first available window handle:" << hwnd;
+        return hwnd;
+    }
+    
+    qDebug() << "No usable window handle found";
+    return nullptr;
+}
 
 // Windows Store Manager - handles all WinRT operations
 class WindowsStoreManager {
 public:
-    WindowsStoreManager() : _storeContext{nullptr} {}
+    WindowsStoreManager() : _storeContext{nullptr}, _windowInitialized{false} {}
     
     ~WindowsStoreManager() = default;
     
@@ -66,6 +108,43 @@ public:
             
             if (_storeContext != nullptr) {
                 qDebug() << "Store context obtained successfully";
+                
+                // Initialize Store context with window handle for Win32 Desktop Bridge apps
+                HWND hwnd = getApplicationWindowHandle();
+                if (hwnd != nullptr) {
+                    qDebug() << "Initializing Store context with window handle...";
+                    
+                    try {
+                        // Query for IInitializeWithWindow interface
+                        ComPtr<IInitializeWithWindow> initializeWithWindow;
+                        HRESULT hr = _storeContext.as<IInitializeWithWindow>(&initializeWithWindow);
+                        
+                        if (SUCCEEDED(hr) && initializeWithWindow) {
+                            // Initialize with the window handle
+                            hr = initializeWithWindow->Initialize(hwnd);
+                            if (SUCCEEDED(hr)) {
+                                qDebug() << "Store context successfully initialized with window handle";
+                                _windowInitialized = true;
+                            } else {
+                                qWarning() << "Failed to initialize Store context with window handle. HRESULT:" 
+                                          << Qt::hex << hr;
+                                _windowInitialized = false;
+                            }
+                        } else {
+                            qWarning() << "Failed to get IInitializeWithWindow interface. HRESULT:" 
+                                      << Qt::hex << hr;
+                        }
+                    } catch (const std::exception& e) {
+                        qWarning() << "Exception during IInitializeWithWindow setup:" << e.what();
+                    } catch (...) {
+                        qWarning() << "Unknown exception during IInitializeWithWindow setup";
+                    }
+                } else {
+                    qWarning() << "No window handle available - Store context may not work properly";
+                    qWarning() << "This is common if Store backend initializes before Qt windows are created";
+                    qWarning() << "Store functionality may be limited until window is available";
+                    _windowInitialized = false;
+                }
                 
                 // Check user context
                 try {
@@ -143,8 +222,37 @@ public:
         return _storeContext.GetUserCollectionAsync(std::move(productKinds));
     }
     
+    // Try to initialize with window handle if not already done
+    bool ensureWindowInitialization() {
+        if (_windowInitialized || _storeContext == nullptr) {
+            return _windowInitialized;
+        }
+        
+        HWND hwnd = getApplicationWindowHandle();
+        if (hwnd != nullptr) {
+            qDebug() << "Retrying Store context window initialization...";
+            try {
+                ComPtr<IInitializeWithWindow> initializeWithWindow;
+                HRESULT hr = _storeContext.as<IInitializeWithWindow>(&initializeWithWindow);
+                
+                if (SUCCEEDED(hr) && initializeWithWindow) {
+                    hr = initializeWithWindow->Initialize(hwnd);
+                    if (SUCCEEDED(hr)) {
+                        qDebug() << "Store context window initialization succeeded on retry";
+                        _windowInitialized = true;
+                        return true;
+                    }
+                }
+            } catch (...) {
+                // Ignore exceptions on retry
+            }
+        }
+        return false;
+    }
+    
 private:
     StoreContext _storeContext;
+    bool _windowInitialized;
 };
 
 
@@ -273,6 +381,9 @@ void MicrosoftStoreBackend::registerProductSync(AbstractProduct* product)
         productIds.push_back(winrt::to_hstring(product->identifier().toStdString()));
         
         qDebug() << "  Querying Microsoft Store for product...";
+        
+        // Ensure window initialization if not done yet
+        _storeManager->ensureWindowInitialization();
         
         // Query store for product information
         auto asyncOp = _storeManager->getStoreProductsAsync(productIds);
