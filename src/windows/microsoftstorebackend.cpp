@@ -167,11 +167,22 @@ public:
                 
                 // Try to get Store info
                 try {
+                    qDebug() << "Querying app license...";
+                    auto licenseStart = std::chrono::high_resolution_clock::now();
                     auto storeAppLicense = _storeContext.GetAppLicenseAsync().get();
+                    auto licenseEnd = std::chrono::high_resolution_clock::now();
+                    auto licenseDuration = std::chrono::duration_cast<std::chrono::milliseconds>(licenseEnd - licenseStart);
+                    qDebug() << "License query completed in" << licenseDuration.count() << "ms";
                     if (storeAppLicense != nullptr) {
                         qDebug() << "App license info:";
                         qDebug() << "  Is active:" << storeAppLicense.IsActive();
                         qDebug() << "  Is trial:" << storeAppLicense.IsTrial();
+                        
+                        // Check if we have a valid license with user
+                        if (storeAppLicense.IsActive() && !storeAppLicense.IsTrial()) {
+                            qDebug() << "  License is active and not trial - should have user access";
+                        }
+                        
                         // Note: StoreId property may not be available in all SDK versions
                         try {
                             auto extendedJsonData = storeAppLicense.ExtendedJsonData();
@@ -318,12 +329,18 @@ void MicrosoftStoreBackend::startConnection()
             qDebug() << "Microsoft Store connection established";
             
             // Debug: List all associated products
+            qDebug() << "Querying Microsoft Store for all app add-ons...";
             try {
+                auto queryStart = std::chrono::high_resolution_clock::now();
                 auto asyncOp = _storeManager->getStoreProductsAsync({});
-                auto result = waitForStoreOperation(asyncOp, 10000);
+                auto result = waitForStoreOperation(asyncOp, 15000); // Increase timeout to 15 seconds
+                auto queryEnd = std::chrono::high_resolution_clock::now();
+                auto queryDuration = std::chrono::duration_cast<std::chrono::milliseconds>(queryEnd - queryStart);
+                qDebug() << "Product query completed in" << queryDuration.count() << "ms";
                 
                 if (result.has_value()) {
                     auto queryResult = result.value();
+                    qDebug() << "Store query completed successfully";
                     if (!queryResult.ExtendedError()) {
                         auto products = queryResult.Products();
                         qDebug() << "Total add-ons found for this app:" << products.Size();
@@ -331,12 +348,25 @@ void MicrosoftStoreBackend::startConnection()
                             qDebug() << "Available add-on:" << QString::fromStdWString(item.Key().c_str())
                                      << "Title:" << QString::fromStdWString(item.Value().Title().c_str());
                         }
+                        
+                        if (products.Size() == 0) {
+                            qDebug() << "No add-ons configured in Microsoft Store for this app";
+                            qDebug() << "This could mean:";
+                            qDebug() << "  1. No add-ons have been created in Partner Center";
+                            qDebug() << "  2. Add-ons exist but are not published/available";
+                            qDebug() << "  3. Add-ons are available in different markets only";
+                        }
                     } else {
-                        qDebug() << "Error querying all add-ons:" << Qt::hex << queryResult.ExtendedError().value;
+                        qWarning() << "Error querying all add-ons:" << Qt::hex << queryResult.ExtendedError().value;
+                        qWarning() << "This suggests either Store connectivity issues or app configuration problems";
                     }
+                } else {
+                    qWarning() << "Store query for all add-ons timed out - this suggests Store connectivity issues";
                 }
+            } catch (const std::exception& e) {
+                qWarning() << "Exception while querying all add-ons:" << e.what();
             } catch (...) {
-                qDebug() << "Exception while querying all add-ons";
+                qWarning() << "Unknown exception while querying all add-ons";
             }
         } else {
             qWarning() << "Failed to get Microsoft Store context";
