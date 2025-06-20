@@ -157,25 +157,20 @@ public:
                     _windowInitialized = false;
                 }
                 
-                // Check user context
+                // Note: StoreContext.User() is only for multi-user apps
+                // For single-user Desktop Bridge apps, it will always return null
+                // This is normal and does not indicate a problem
                 try {
                     auto user = _storeContext.User();
                     if (user != nullptr) {
-                        qDebug() << "Store context has user";
-                        // Try to get more user info
-                        // Note: AuthenticationStatus may not be available in all SDK versions
+                        qDebug() << "Store context has user (multi-user app)";
                     } else {
-                        qDebug() << "Store context has no user (running as system or in development mode?)";
-                        qDebug() << "This may limit Store functionality. Ensure:";
-                        qDebug() << "  1. App is installed from .appx package (not running .exe directly)";
-                        qDebug() << "  2. App is associated with Microsoft Store listing";
-                        qDebug() << "  3. Running with normal user privileges";
-                        qDebug() << "  4. Windows Store services are running";
+                        qDebug() << "Store context User is null (normal for single-user Desktop Bridge apps)";
                     }
                 } catch (const std::exception& e) {
-                    qDebug() << "Exception getting user from store context:" << e.what();
+                    qDebug() << "Exception checking user context (can be ignored):" << e.what();
                 } catch (...) {
-                    qDebug() << "Unknown exception getting user from store context";
+                    // User property may not be available in all contexts
                 }
                 
                 // Try to get Store info
@@ -242,6 +237,11 @@ public:
     IAsyncOperation<StoreProductQueryResult> getUserCollectionAsync() {
         std::vector<hstring> productKinds = { L"Durable", L"UnmanagedConsumable" };
         return _storeContext.GetUserCollectionAsync(std::move(productKinds));
+    }
+    
+    IAsyncOperation<StoreProductQueryResult> getAssociatedStoreProductsAsync() {
+        std::vector<hstring> productKinds = { L"Durable", L"UnmanagedConsumable" };
+        return _storeContext.GetAssociatedStoreProductsAsync(std::move(productKinds));
     }
     
     // Try to initialize with window handle if not already done
@@ -372,7 +372,7 @@ void MicrosoftStoreBackend::startConnection()
             qDebug() << "Querying Microsoft Store for all app add-ons...";
             try {
                 auto queryStart = std::chrono::high_resolution_clock::now();
-                auto asyncOp = _storeManager->getStoreProductsAsync({});
+                auto asyncOp = _storeManager->getAssociatedStoreProductsAsync();
                 auto result = waitForStoreOperation(asyncOp, 15000); // Increase timeout to 15 seconds
                 auto queryEnd = std::chrono::high_resolution_clock::now();
                 auto queryDuration = std::chrono::duration_cast<std::chrono::milliseconds>(queryEnd - queryStart);
