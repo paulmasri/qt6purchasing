@@ -71,9 +71,9 @@ Here's why:
 [![Java][java-badge]][java-url]<br>
 [![Cmake][cmake-badge]][cmake-url]<br>
 
-[qt-badge]: https://img.shields.io/badge/Qt/QML-6-20232A?style=for-the-badge&logo=qt&logoColor=41cd52
+[qt-badge]: https://img.shields.io/badge/Qt/QML-6.8-20232A?style=for-the-badge&logo=qt&logoColor=41cd52
 [qt-url]: https://www.qt.io/product/qt6
-[cpp-badge]: https://img.shields.io/badge/C++-17-20232A?style=for-the-badge&logo=cplusplus&logoColor=blue
+[cpp-badge]: https://img.shields.io/badge/C++-20-20232A?style=for-the-badge&logo=cplusplus&logoColor=blue
 [cpp-url]: https://isocpp.org/
 [objc-badge]: https://img.shields.io/badge/Objective--C-20232A?style=for-the-badge&logo=apple&logoColor=gold
 [objc-url]: https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/ProgrammingWithObjectiveC/Introduction/Introduction.html
