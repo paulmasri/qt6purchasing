@@ -52,7 +52,7 @@
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-This project provides a library wrapper, that provides an abstraction of the native app store libraries, and makes the necessary functionalities available in Qt6 and QML. Compatible with Apple App Store and Google Play Store.
+This project provides a library wrapper, that provides an abstraction of the native app store libraries, and makes the necessary functionalities available in Qt6 and QML. Compatible with Apple App Store, Google Play Store, and Microsoft Store.
 
 Here's why:
 * In-App-Purchasing might be an important way of monetizing your Qt/QML mobile app.
@@ -94,8 +94,9 @@ To add In-App-Purchasing capabilities to your Qt6/QML project follow the steps b
 ### Prerequisites
 
 * Qt/QML 6 (6.8 or higher)
-* Apple StoreKit
-* Android Billing Client
+* Apple StoreKit (iOS)
+* Android Billing Client (Android)
+* Windows SDK with WinRT support (Windows)
 
 ### Installation
 
@@ -122,6 +123,72 @@ To add In-App-Purchasing capabilities to your Qt6/QML project follow the steps b
               qt6purchasinglibplugin
       )
       ```
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+## Windows/Microsoft Store Setup
+
+### Required COM Apartment Initialization
+
+For Windows applications using Microsoft Store integration, you **must** initialize COM apartment mode in your application's `main.cpp`:
+
+```cpp
+#include <QGuiApplication>
+#include <QQmlApplicationEngine>
+
+#ifdef Q_OS_WIN
+#include <windows.h>
+#include <winrt/base.h>
+#endif
+
+int main(int argc, char *argv[])
+{
+    QGuiApplication app(argc, argv);
+
+#ifdef Q_OS_WIN
+    // CRITICAL: Fix COM apartment initialization for WinRT
+    try {
+        winrt::uninit_apartment();
+        winrt::init_apartment(); // Defaults to multi-threaded
+    } catch (...) {
+        // Continue anyway - some functionality might still work
+    }
+#endif
+
+    QQmlApplicationEngine engine;
+    engine.loadFromModule("YourModule", "Main");
+    return app.exec();
+}
+```
+
+**Why this is required:**
+- Qt initializes COM in single-threaded apartment mode
+- WinRT Store APIs require multi-threaded apartment mode
+- This must be done at the process level before any WinRT usage
+- Without this, Store API calls will hang indefinitely
+
+### Microsoft Store Product Configuration
+
+Windows products require both a generic `identifier` and a Microsoft-specific `microsoftStoreId`:
+
+```qml
+Qt6Purchasing.Product {
+    identifier: "premium_upgrade"        // Generic cross-platform identifier
+    microsoftStoreId: "9NBLGGH4TNMP"    // Store ID from Microsoft Partner Center
+    type: Qt6Purchasing.Product.Unlockable
+}
+```
+
+The `microsoftStoreId` should be the exact Store ID from your Microsoft Partner Center add-on configuration.
+
+### Windows Store Product Types
+
+- **Durable** → Maps to `Product.Unlockable` (non-consumable, purchased once)
+- **UnmanagedConsumable** → Maps to `Product.Consumable` (can be repurchased after consumption)
+
+### Consumable Fulfillment
+
+The library automatically handles consumable fulfillment for Microsoft Store. When you call `transaction.finalize()` on a consumable purchase, the library reports fulfillment to Microsoft Store with a unique tracking ID, allowing the user to repurchase the same consumable.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 

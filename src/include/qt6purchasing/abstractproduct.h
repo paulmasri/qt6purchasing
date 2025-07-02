@@ -19,6 +19,9 @@ class AbstractProduct : public QObject
     // writable properties
     Q_PROPERTY(QString identifier READ identifier WRITE setIdentifier NOTIFY identifierChanged REQUIRED)
     Q_PROPERTY(ProductType type READ productType WRITE setProductType NOTIFY productTypeChanged REQUIRED)
+#ifdef Q_OS_WIN
+    Q_PROPERTY(QString microsoftStoreId READ microsoftStoreId WRITE setMicrosoftStoreId NOTIFY microsoftStoreIdChanged)
+#endif
     // read only properties
     Q_PROPERTY(ProductStatus status READ status NOTIFY statusChanged)
     Q_PROPERTY(QString description READ description NOTIFY descriptionChanged)
@@ -45,6 +48,9 @@ public:
     QString price() const { return _price; }
     ProductType productType() const { return _productType; }
     QString title() const { return _title; }
+#ifdef Q_OS_WIN
+    QString microsoftStoreId() const { return _microsoftStoreId; }
+#endif
 
     void setIdentifier(const QString &value);
     void setProductType(ProductType type);
@@ -52,6 +58,9 @@ public:
     void setDescription(QString value);
     void setPrice(const QString &value);
     void setTitle(const QString &value);
+#ifdef Q_OS_WIN
+    void setMicrosoftStoreId(const QString &value);
+#endif
 
     void registerInStore();
 
@@ -66,6 +75,9 @@ protected:
     QString _price;
     ProductType _productType;
     QString _title;
+#ifdef Q_OS_WIN
+    QString _microsoftStoreId;
+#endif
 
 private:
     AbstractStoreBackend* findStoreBackend() const;
@@ -78,6 +90,9 @@ signals:
     void priceChanged();
     void productTypeChanged();
     void titleChanged();
+#ifdef Q_OS_WIN
+    void microsoftStoreIdChanged();
+#endif
 
     void purchaseSucceeded(AbstractTransaction * transaction);
     void purchaseFailed(AbstractTransaction * transaction);

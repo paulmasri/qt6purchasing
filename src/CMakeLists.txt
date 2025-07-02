@@ -68,18 +68,20 @@ elseif(APPLE)
 elseif(WIN32)
     # Windows Runtime libraries for Microsoft Store APIs
     find_library(WINDOWSAPPLIB WindowsApp)
-    list(APPEND PLATFORM_LIBS ${WINDOWSAPPLIB})
+    list(APPEND PLATFORM_LIBS ${WINDOWSAPPLIB} oleaut32)
 
     list(APPEND PLATFORM_SOURCES
         windows/microsoftstorebackend.cpp
         windows/microsoftstoreproduct.cpp
         windows/microsoftstoretransaction.cpp
+        windows/microsoftstoreworkers.cpp
     )
     list(APPEND PLATFORM_HEADERS
         windows/microsoftstorebackend.h
         windows/microsoftstoreproduct.h
         windows/microsoftstoretransaction.h
         windows/windowsstorewrappers.h
+        windows/microsoftstoreworkers.h
     )
 
     set(PLATFORM_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR}/windows)
@@ -104,10 +106,6 @@ qt_add_library(qt6purchasinglib STATIC
         ${PLATFORM_HEADERS}
 )
 
-if(WIN32)
-    # Enable C++20 for coroutines and WinRT
-     set_property(TARGET qt6purchasinglib PROPERTY CXX_STANDARD 20)
- endif()
 
 qt_add_qml_module(qt6purchasinglib
     URI Qt6Purchasing

@@ -3,9 +3,9 @@
 
 #include <qt6purchasing/abstractstorebackend.h>
 #include <QTimer>
-
-// Forward declaration to avoid WinRT headers in public interface
-class WindowsStoreManager;
+#include <QVariantMap>
+#include <QMap>
+#include <windows.h>
 
 class MicrosoftStoreBackend : public AbstractStoreBackend
 {
@@ -33,10 +33,19 @@ public:
 
     static MicrosoftStoreBackend * s_currentInstance;
 
-private:
-    WindowsStoreManager * _storeManager = nullptr;
+private slots:
+    void onProductQueried(AbstractProduct* product, bool success, const QVariantMap& productData);
+    void onPurchaseComplete(AbstractProduct* product, bool success, int status, const QString& result);
+    void onRestoreComplete(const QList<QVariantMap> &restoredProducts);
+    void onAllProductsQueried(const QList<QVariantMap> &products);
 
-    void registerProductSync(AbstractProduct* product);
+private:
+    HWND _hwnd = nullptr;
+    QMap<QString, AbstractProduct*> _registeredProducts; // Track products by identifier
+
+    void initializeWindowHandle();
+    void queryAllProducts();
+    void onConsumableFulfillmentComplete(AbstractTransaction* transaction, bool success, const QString& result);
     StoreErrorCode mapStoreError(uint32_t hresult);
 };
 
