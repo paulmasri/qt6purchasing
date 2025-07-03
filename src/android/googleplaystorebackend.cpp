@@ -192,5 +192,5 @@ void GooglePlayStoreBackend::consumePurchase(AbstractTransaction * transaction)
     env->ReleaseStringUTFChars(message, jsonCStr);
 
     GooglePlayStoreTransaction * transaction = new GooglePlayStoreTransaction(json, backend);
-    emit backend->purchaseConsumed(transaction);
+    emit backend->consumePurchaseSucceeded(transaction);
 }

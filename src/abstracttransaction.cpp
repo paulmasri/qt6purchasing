@@ -18,9 +18,18 @@ void AbstractTransaction::finalize()
     _store->consumePurchase(this);
 }
 
+void AbstractTransaction::setRetained(bool retained)
+{
+    if (_retained == retained)
+        return;
+    
+    _retained = retained;
+    emit retainedChanged();
+}
+
 void AbstractTransaction::retain()
 {
-    _retained = true;
+    setRetained(true);
     qDebug() << "Transaction retained:" << _orderId;
 }
 

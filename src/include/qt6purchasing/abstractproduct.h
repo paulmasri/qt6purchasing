@@ -97,7 +97,8 @@ signals:
     void purchaseSucceeded(AbstractTransaction * transaction);
     void purchaseFailed(AbstractTransaction * transaction);
     void purchaseRestored(AbstractTransaction * transaction);
-    void purchaseConsumed(AbstractTransaction * transaction);
+    void consumePurchaseSucceeded(AbstractTransaction * transaction);
+    void consumePurchaseFailed(AbstractTransaction * transaction);
 
 };
 

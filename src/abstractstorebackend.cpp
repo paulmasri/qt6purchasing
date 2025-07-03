@@ -36,7 +36,7 @@ AbstractStoreBackend::AbstractStoreBackend(QObject * parent) : QObject(parent)
 
         // Auto-cleanup unless retained
         QTimer::singleShot(0, this, [transaction]() {
-            if (!transaction->property("_retained").toBool()) {
+            if (!transaction->isRetained()) {
                 transaction->deleteLater();
             }
         });
@@ -54,7 +54,7 @@ AbstractStoreBackend::AbstractStoreBackend(QObject * parent) : QObject(parent)
 
         // Auto-cleanup unless retained
         QTimer::singleShot(0, this, [transaction]() {
-            if (!transaction->property("_retained").toBool()) {
+            if (!transaction->isRetained()) {
                 transaction->deleteLater();
             }
         });
@@ -64,19 +64,37 @@ AbstractStoreBackend::AbstractStoreBackend(QObject * parent) : QObject(parent)
         qDebug() << "purchaseFailed:" << code;
     });
 
-    connect(this, &AbstractStoreBackend::purchaseConsumed, [this](AbstractTransaction * transaction){
-        qDebug() << "purchaseConsumed:" << transaction->orderId();
+    connect(this, &AbstractStoreBackend::consumePurchaseSucceeded, [this](AbstractTransaction * transaction){
+        qDebug() << "consumePurchaseSucceeded:" << transaction->orderId();
 
         AbstractProduct * ap = product(transaction->productId());
         if (ap) {
-            emit ap->purchaseConsumed(transaction);
+            emit ap->consumePurchaseSucceeded(transaction);
         } else {
             qCritical() << "Failed to map consumed purchase to a product!";
         }
 
         // Auto-cleanup unless retained
         QTimer::singleShot(0, this, [transaction]() {
-            if (!transaction->property("_retained").toBool()) {
+            if (!transaction->isRetained()) {
+                transaction->deleteLater();
+            }
+        });
+    });
+
+    connect(this, &AbstractStoreBackend::consumePurchaseFailed, [this](AbstractTransaction * transaction){
+        qDebug() << "consumePurchaseFailed:" << transaction->orderId();
+
+        AbstractProduct * ap = product(transaction->productId());
+        if (ap) {
+            emit ap->consumePurchaseFailed(transaction);
+        } else {
+            qCritical() << "Failed to map failed consumption to a product!";
+        }
+
+        // Auto-cleanup unless retained
+        QTimer::singleShot(0, this, [transaction]() {
+            if (!transaction->isRetained()) {
                 transaction->deleteLater();
             }
         });

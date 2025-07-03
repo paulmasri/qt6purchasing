@@ -45,7 +45,7 @@ private:
 
     void initializeWindowHandle();
     void queryAllProducts();
-    void onConsumableFulfillmentComplete(AbstractTransaction* transaction, bool success, const QString& result);
+    void onConsumableFulfillmentComplete(const QString& orderId, const QString& productId, bool success, const QString& result);
     StoreErrorCode mapStoreError(uint32_t hresult);
 };
 

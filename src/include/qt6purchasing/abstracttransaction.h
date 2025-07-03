@@ -15,6 +15,7 @@ class AbstractTransaction : public QObject
 
     Q_PROPERTY(int status READ status NOTIFY statusChanged)
     Q_PROPERTY(QString orderId READ orderId CONSTANT)
+    Q_PROPERTY(bool retained READ isRetained WRITE setRetained NOTIFY retainedChanged)
 
 public:
     enum Status {
@@ -27,6 +28,8 @@ public:
 
     int status() const { return _status; }
     QString orderId() const { return _orderId; }
+    bool isRetained() const { return _retained; }
+    void setRetained(bool retained);
     virtual QString productId() const = 0;
 
     Q_INVOKABLE void finalize();
@@ -42,6 +45,7 @@ protected:
 
 signals:
     void statusChanged();
+    void retainedChanged();
 
 };
 

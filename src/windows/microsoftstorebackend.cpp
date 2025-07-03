@@ -73,7 +73,7 @@ void MicrosoftStoreBackend::queryAllProducts()
     }
     
     auto* worker = new StoreAllProductsWorker(_hwnd);
-    auto* thread = new QThread(this);
+    auto* thread = new QThread(nullptr);
     
     worker->moveToThread(thread);
     connect(thread, &QThread::started, worker, &StoreAllProductsWorker::performQuery);
@@ -119,7 +119,7 @@ void MicrosoftStoreBackend::registerProduct(AbstractProduct * product)
 #endif
     
     auto* worker = new StoreProductQueryWorker(productId, _hwnd);
-    auto* thread = new QThread(this);
+    auto* thread = new QThread(nullptr);
     
     worker->moveToThread(thread);
     connect(thread, &QThread::started, worker, &StoreProductQueryWorker::performQuery);
@@ -190,7 +190,7 @@ void MicrosoftStoreBackend::purchaseProduct(AbstractProduct * product)
 #endif
     
     auto* worker = new StorePurchaseWorker(productId, _hwnd);
-    auto* thread = new QThread(this);
+    auto* thread = new QThread(nullptr);
     
     worker->moveToThread(thread);
     connect(thread, &QThread::started, worker, &StorePurchaseWorker::performPurchase);
@@ -228,6 +228,11 @@ void MicrosoftStoreBackend::onPurchaseComplete(AbstractProduct* product, bool su
 
 void MicrosoftStoreBackend::consumePurchase(AbstractTransaction * transaction)
 {
+    if (!transaction) {
+        qWarning() << "consumePurchase called with null transaction";
+        return;
+    }
+    
     qDebug() << "Consume purchase called for:" << transaction->orderId() << "Product:" << transaction->productId();
     
     // Look up the product to check its type
@@ -235,23 +240,24 @@ void MicrosoftStoreBackend::consumePurchase(AbstractTransaction * transaction)
     
     if (!product) {
         qWarning() << "Cannot find product for transaction:" << transaction->productId();
-        emit purchaseConsumed(transaction);
+        emit consumePurchaseFailed(transaction);
         return;
     }
     
     // Only consumables need fulfillment
     if (product->productType() != AbstractProduct::Consumable) {
         qDebug() << "Product is not consumable (type:" << product->productType() << "), no fulfillment needed";
-        emit purchaseConsumed(transaction);
+        emit consumePurchaseSucceeded(transaction);
         return;
     }
     
     // For consumables, we need to report fulfillment to Microsoft Store
     qDebug() << "Product is consumable, reporting fulfillment to Microsoft Store";
+    qDebug() << "Note: Fulfillment may fail in debug mode - requires proper Store packaging";
     
     if (!_hwnd) {
         qWarning() << "No window handle available for consumable fulfillment";
-        emit purchaseConsumed(transaction);
+        emit consumePurchaseFailed(transaction);
         return;
     }
     
@@ -267,13 +273,29 @@ void MicrosoftStoreBackend::consumePurchase(AbstractTransaction * transaction)
     
     // Create fulfillment worker
     auto* worker = new StoreConsumableFulfillmentWorker(storeId, 1, _hwnd); // quantity = 1
-    auto* thread = new QThread(this);
+    auto* thread = new QThread(nullptr);
     
     worker->moveToThread(thread);
     connect(thread, &QThread::started, worker, &StoreConsumableFulfillmentWorker::performFulfillment);
+    // Retain transaction to keep it alive during async fulfillment
+    transaction->retain();
+    
+    // Capture transaction data by value for logging
+    QString orderId = transaction->orderId();
+    QString productId = transaction->productId();
     connect(worker, &StoreConsumableFulfillmentWorker::fulfillmentComplete, 
-            [this, transaction](bool success, const QString& result) {
-                this->onConsumableFulfillmentComplete(transaction, success, result);
+            [this, transaction, orderId, productId](bool success, const QString& result) {
+                this->onConsumableFulfillmentComplete(orderId, productId, success, result);
+                
+                // Emit appropriate signal based on fulfillment result
+                if (success) {
+                    emit consumePurchaseSucceeded(transaction);
+                } else {
+                    emit consumePurchaseFailed(transaction);
+                }
+                
+                // Safe cleanup now that signals are emitted
+                transaction->destroy();
             });
     connect(worker, &StoreConsumableFulfillmentWorker::finished, thread, &QThread::quit);
     connect(thread, &QThread::finished, thread, &QThread::deleteLater);
@@ -295,7 +317,7 @@ void MicrosoftStoreBackend::restorePurchases()
     }
     
     auto* worker = new StoreRestoreWorker(_hwnd);
-    auto* thread = new QThread(this);
+    auto* thread = new QThread(nullptr);
     
     worker->moveToThread(thread);
     connect(thread, &QThread::started, worker, &StoreRestoreWorker::performRestore);
@@ -322,18 +344,23 @@ void MicrosoftStoreBackend::onRestoreComplete(const QList<QVariantMap> &restored
     }
 }
 
-void MicrosoftStoreBackend::onConsumableFulfillmentComplete(AbstractTransaction* transaction, bool success, const QString& result)
+void MicrosoftStoreBackend::onConsumableFulfillmentComplete(const QString& orderId, const QString& productId, bool success, const QString& result)
 {
     if (success) {
-        qDebug() << "Consumable fulfillment completed successfully for:" << transaction->productId();
+        qDebug() << "Consumable fulfillment completed successfully for product:" << productId << "order:" << orderId;
     } else {
-        qWarning() << "Consumable fulfillment failed for:" << transaction->productId() 
+        qWarning() << "Consumable fulfillment failed for product:" << productId << "order:" << orderId
                    << "Error:" << result;
+        
+        // Check if this is a debug mode limitation
+        if (result.contains("Server error") || result.contains("0x803f6107")) {
+            qWarning() << "Note: Fulfillment errors are common in debug mode. "
+                       << "This app needs to be properly packaged and signed for the Microsoft Store "
+                       << "for consumable fulfillment to work correctly.";
+        }
     }
     
-    // Always emit consumed signal to maintain API consistency
-    // The app can check success via logs if needed
-    emit purchaseConsumed(transaction);
+    // Note: consumePurchase success/failure signals are now emitted in the lambda to ensure transaction validity
 }
 
 MicrosoftStoreBackend::StoreErrorCode MicrosoftStoreBackend::mapStoreError(uint32_t hresult)
