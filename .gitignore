@@ -49,6 +49,13 @@ Thumbs.db
 # Vim temporary files
 .*.swp
 
+# Claude AI temporary files
+*.claude-tmp
+.claude*
+claude-*.txt
+.anthropic-*
+CLAUDE.md
+
 # Visual Studio generated files
 *.ib_pdb_index
 *.idb

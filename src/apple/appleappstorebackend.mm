@@ -157,5 +157,5 @@ void AppleAppStoreBackend::purchaseProduct(AbstractProduct * product)
 void AppleAppStoreBackend::consumePurchase(AbstractTransaction * transaction)
 {
     [[SKPaymentQueue defaultQueue] finishTransaction:reinterpret_cast<AppleAppStoreTransaction *>(transaction)->nativeTransaction()];
-    emit purchaseConsumed(transaction);
+    emit consumePurchaseSucceeded(transaction);
 }

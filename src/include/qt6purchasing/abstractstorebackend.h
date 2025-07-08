@@ -6,8 +6,11 @@
 #include <QQmlEngine>
 #include <QQmlListProperty>
 
+// Forward declaration for AbstractProduct to avoid circular dependency
 class AbstractProduct;
-class AbstractTransaction;
+
+// Need full definition for AbstractTransaction due to signal parameters
+#include <qt6purchasing/abstracttransaction.h>
 
 class AbstractStoreBackend : public QObject
 {
@@ -51,7 +54,8 @@ signals:
     void purchaseSucceeded(AbstractTransaction * transaction);
     void purchaseRestored(AbstractTransaction * transaction);
     void purchaseFailed(int code);
-    void purchaseConsumed(AbstractTransaction * transaction);
+    void consumePurchaseSucceeded(AbstractTransaction * transaction);
+    void consumePurchaseFailed(AbstractTransaction * transaction);
 };
 
 #endif // ABSTRACTSTOREBACKEND_H

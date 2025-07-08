@@ -4,6 +4,7 @@ project(qt6purchasing LANGUAGES CXX)
 
 find_package(Qt6 6.8 REQUIRED COMPONENTS
     Core
+    Gui
     Qml
 )
 
@@ -64,6 +65,26 @@ elseif(APPLE)
         PROPERTIES
         COMPILE_FLAGS "-fobjc-arc"
     )
+elseif(WIN32)
+    # Windows Runtime libraries for Microsoft Store APIs
+    find_library(WINDOWSAPPLIB WindowsApp)
+    list(APPEND PLATFORM_LIBS ${WINDOWSAPPLIB} oleaut32)
+
+    list(APPEND PLATFORM_SOURCES
+        windows/microsoftstorebackend.cpp
+        windows/microsoftstoreproduct.cpp
+        windows/microsoftstoretransaction.cpp
+        windows/microsoftstoreworkers.cpp
+    )
+    list(APPEND PLATFORM_HEADERS
+        windows/microsoftstorebackend.h
+        windows/microsoftstoreproduct.h
+        windows/microsoftstoretransaction.h
+        windows/windowsstorewrappers.h
+        windows/microsoftstoreworkers.h
+    )
+
+    set(PLATFORM_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR}/windows)
 endif()
 
 # The public-facing library
@@ -85,6 +106,7 @@ qt_add_library(qt6purchasinglib STATIC
         ${PLATFORM_HEADERS}
 )
 
+
 qt_add_qml_module(qt6purchasinglib
     URI Qt6Purchasing
     VERSION 1.0
@@ -100,6 +122,7 @@ target_include_directories(qt6purchasinglib
 target_link_libraries(qt6purchasinglib
     PRIVATE
         Qt6::Core
+        Qt6::Gui
     PUBLIC
         Qt6::Qml
         ${PLATFORM_LIBS}

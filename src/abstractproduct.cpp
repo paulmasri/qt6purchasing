@@ -1,5 +1,6 @@
 #include <qt6purchasing/abstractproduct.h>
 #include <qt6purchasing/abstracttransaction.h>
+#include <qt6purchasing/abstractstorebackend.h>
 
 AbstractProduct::AbstractProduct(QObject * parent) : QObject(parent)
 {
@@ -54,6 +55,14 @@ void AbstractProduct::setStatus(ProductStatus status)
     qDebug() << "Product" << _identifier << _status;
     emit statusChanged();
 }
+
+#ifdef Q_OS_WIN
+void AbstractProduct::setMicrosoftStoreId(const QString &value)
+{
+    _microsoftStoreId = value;
+    emit microsoftStoreIdChanged();
+}
+#endif
 
 void AbstractProduct::registerInStore()
 {
