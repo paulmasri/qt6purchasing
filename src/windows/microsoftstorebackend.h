@@ -47,6 +47,8 @@ private:
     void queryAllProducts();
     void onConsumableFulfillmentComplete(const QString& orderId, const QString& productId, bool success, const QString& result);
     StoreErrorCode mapStoreError(uint32_t hresult);
+    static PurchaseError mapStoreErrorToPurchaseError(StoreErrorCode errorCode);
+    static QString getStoreErrorMessage(StoreErrorCode errorCode);
 };
 
 #endif // MICROSOFTSTOREBACKEND_H

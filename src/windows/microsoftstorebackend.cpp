@@ -170,13 +170,17 @@ void MicrosoftStoreBackend::purchaseProduct(AbstractProduct * product)
 {
     if (!isConnected()) {
         qWarning() << "Cannot purchase - store not connected";
-        emit purchaseFailed(static_cast<int>(ServiceUnavailable));
+        PurchaseError error = mapStoreErrorToPurchaseError(ServiceUnavailable);
+        QString message = getStoreErrorMessage(ServiceUnavailable);
+        emit purchaseFailed(error, static_cast<int>(ServiceUnavailable), message);
         return;
     }
     
     if (!_hwnd) {
         qWarning() << "No window handle available for purchase";
-        emit purchaseFailed(static_cast<int>(UnknownError));
+        PurchaseError error = mapStoreErrorToPurchaseError(UnknownError);
+        QString message = getStoreErrorMessage(UnknownError);
+        emit purchaseFailed(error, static_cast<int>(UnknownError), message);
         return;
     }
     
@@ -222,7 +226,9 @@ void MicrosoftStoreBackend::onPurchaseComplete(AbstractProduct* product, bool su
         } else if (result == "ServerError") {
             errorCode = ServiceUnavailable;
         }
-        emit purchaseFailed(static_cast<int>(errorCode));
+        PurchaseError error = mapStoreErrorToPurchaseError(errorCode);
+        QString message = getStoreErrorMessage(errorCode);
+        emit purchaseFailed(error, static_cast<int>(errorCode), message);
     }
 }
 
@@ -374,5 +380,39 @@ MicrosoftStoreBackend::StoreErrorCode MicrosoftStoreBackend::mapStoreError(uint3
             return NetworkError;
         default:
             return UnknownError;
+    }
+}
+
+AbstractStoreBackend::PurchaseError MicrosoftStoreBackend::mapStoreErrorToPurchaseError(StoreErrorCode errorCode)
+{
+    switch (errorCode) {
+        case Success:
+            return PurchaseError::UnknownError; // Should never be called for success
+        case NetworkError:
+            return PurchaseError::NetworkError;
+        case UserCanceled:
+            return PurchaseError::UserCanceled;
+        case ServiceUnavailable:
+            return PurchaseError::ServiceUnavailable;
+        case UnknownError:
+        default:
+            return PurchaseError::UnknownError;
+    }
+}
+
+QString MicrosoftStoreBackend::getStoreErrorMessage(StoreErrorCode errorCode)
+{
+    switch (errorCode) {
+        case Success:
+            return "Success";
+        case NetworkError:
+            return "Network connection failed";
+        case UserCanceled:
+            return "User canceled the purchase";
+        case ServiceUnavailable:
+            return "Microsoft Store service is unavailable";
+        case UnknownError:
+        default:
+            return "An unknown error occurred";
     }
 }

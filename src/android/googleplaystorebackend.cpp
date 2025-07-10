@@ -176,7 +176,9 @@ void GooglePlayStoreBackend::consumePurchase(AbstractTransaction * transaction)
         return;
     }
 
-    emit backend->purchaseFailed(billingResponseCode);
+    PurchaseError error = mapBillingResponseToPurchaseError(billingResponseCode);
+    QString message = getBillingResponseMessage(billingResponseCode);
+    emit backend->purchaseFailed(error, billingResponseCode, message);
 }
 
 /*static*/ void GooglePlayStoreBackend::purchaseConsumed(JNIEnv *env, jobject object, jstring message)
@@ -193,4 +195,57 @@ void GooglePlayStoreBackend::consumePurchase(AbstractTransaction * transaction)
 
     GooglePlayStoreTransaction * transaction = new GooglePlayStoreTransaction(json, backend);
     emit backend->consumePurchaseSucceeded(transaction);
+}
+
+/*static*/ AbstractStoreBackend::PurchaseError GooglePlayStoreBackend::mapBillingResponseToPurchaseError(int billingResponseCode)
+{
+    switch (static_cast<BillingResponseCode>(billingResponseCode)) {
+        case USER_CANCELED:
+            return PurchaseError::UserCanceled;
+        case SERVICE_UNAVAILABLE:
+            return PurchaseError::NetworkError;
+        case BILLING_UNAVAILABLE:
+            return PurchaseError::ServiceUnavailable;
+        case ITEM_UNAVAILABLE:
+            return PurchaseError::ItemUnavailable;
+        case ITEM_ALREADY_OWNED:
+            return PurchaseError::AlreadyPurchased;
+        case DEVELOPER_ERROR:
+            return PurchaseError::DeveloperError;
+        case ERROR:
+        default:
+            return PurchaseError::UnknownError;
+    }
+}
+
+/*static*/ QString GooglePlayStoreBackend::getBillingResponseMessage(int billingResponseCode)
+{
+    switch (static_cast<BillingResponseCode>(billingResponseCode)) {
+        case OK:
+            return "Success";
+        case USER_CANCELED:
+            return "User canceled the purchase";
+        case SERVICE_UNAVAILABLE:
+            return "Google Play service is unavailable";
+        case BILLING_UNAVAILABLE:
+            return "Google Play billing is unavailable";
+        case ITEM_UNAVAILABLE:
+            return "The requested item is not available for purchase";
+        case DEVELOPER_ERROR:
+            return "Invalid arguments provided to the API";
+        case ERROR:
+            return "Fatal error during API action";
+        case ITEM_ALREADY_OWNED:
+            return "The user already owns this item";
+        case ITEM_NOT_OWNED:
+            return "The user does not own this item";
+        case FEATURE_NOT_SUPPORTED:
+            return "The requested feature is not supported";
+        case SERVICE_DISCONNECTED:
+            return "Google Play service is disconnected";
+        case SERVICE_TIMEOUT:
+            return "Google Play service timed out";
+        default:
+            return QString("Unknown billing response code: %1").arg(billingResponseCode);
+    }
 }
