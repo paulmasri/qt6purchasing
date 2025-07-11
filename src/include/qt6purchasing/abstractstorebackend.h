@@ -20,10 +20,12 @@ class AbstractStoreBackend : public QObject
 
 public:
     enum class PurchaseError {
+        NoError,
         UserCanceled,
         NetworkError,
         ServiceUnavailable,
         ItemUnavailable,
+        ItemNotOwned,
         AlreadyPurchased,
         DeveloperError,
         PaymentInvalid,

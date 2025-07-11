@@ -208,10 +208,18 @@ void GooglePlayStoreBackend::consumePurchase(AbstractTransaction * transaction)
             return PurchaseError::ServiceUnavailable;
         case ITEM_UNAVAILABLE:
             return PurchaseError::ItemUnavailable;
+        case ITEM_NOT_OWNED:
+            return PurchaseError::ItemNotOwned;
         case ITEM_ALREADY_OWNED:
             return PurchaseError::AlreadyPurchased;
         case DEVELOPER_ERROR:
             return PurchaseError::DeveloperError;
+        case FEATURE_NOT_SUPPORTED:
+            return PurchaseError::NotAllowed;
+        case SERVICE_DISCONNECTED:
+            return PurchaseError::ServiceUnavailable;
+        case SERVICE_TIMEOUT:
+            return PurchaseError::NetworkError;
         case ERROR:
         default:
             return PurchaseError::UnknownError;

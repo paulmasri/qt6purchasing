@@ -387,7 +387,9 @@ AbstractStoreBackend::PurchaseError MicrosoftStoreBackend::mapStoreErrorToPurcha
 {
     switch (errorCode) {
         case Success:
-            return PurchaseError::UnknownError; // Should never be called for success
+            return PurchaseError::NoError;
+        case AlreadyPurchased:
+            return PurchaseError::AlreadyPurchased;
         case NetworkError:
             return PurchaseError::NetworkError;
         case UserCanceled:
@@ -405,6 +407,8 @@ QString MicrosoftStoreBackend::getStoreErrorMessage(StoreErrorCode errorCode)
     switch (errorCode) {
         case Success:
             return "Success";
+        case AlreadyPurchased:
+            return "User already owns this item";
         case NetworkError:
             return "Network connection failed";
         case UserCanceled:

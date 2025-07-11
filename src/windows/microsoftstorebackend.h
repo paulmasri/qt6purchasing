@@ -15,9 +15,10 @@ class MicrosoftStoreBackend : public AbstractStoreBackend
 public:
     enum StoreErrorCode {
         Success = 0,
-        NetworkError = 1,
-        UserCanceled = 2,
-        ServiceUnavailable = 3,
+        AlreadyPurchased = 1,
+        NetworkError = 2,
+        UserCanceled = 3,
+        ServiceUnavailable = 4,
         UnknownError = 99
     };
     Q_ENUM(StoreErrorCode)
