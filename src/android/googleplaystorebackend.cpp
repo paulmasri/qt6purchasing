@@ -178,7 +178,7 @@ void GooglePlayStoreBackend::consumePurchase(AbstractTransaction * transaction)
 
     PurchaseError error = mapBillingResponseToPurchaseError(billingResponseCode);
     QString message = getBillingResponseMessage(billingResponseCode);
-    emit backend->purchaseFailed(error, billingResponseCode, message);
+    emit backend->purchaseFailed(static_cast<int>(error), billingResponseCode, message);
 }
 
 /*static*/ void GooglePlayStoreBackend::purchaseConsumed(JNIEnv *env, jobject object, jstring message)

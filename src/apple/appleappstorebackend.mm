@@ -112,7 +112,7 @@ AppleAppStoreBackend* AppleAppStoreBackend::s_currentInstance = nullptr;
                 AbstractStoreBackend::PurchaseError error = AppleAppStoreBackend::mapStoreKitErrorToPurchaseError(errorCode);
                 QString message = AppleAppStoreBackend::getStoreKitErrorMessage(errorCode);
                 QMetaObject::invokeMethod(backend, "purchaseFailed", Qt::AutoConnection, 
-                    Q_ARG(AbstractStoreBackend::PurchaseError, error), 
+                    Q_ARG(int, static_cast<int>(error)), 
                     Q_ARG(int, errorCode), 
                     Q_ARG(QString, message));
             }

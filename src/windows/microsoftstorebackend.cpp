@@ -177,7 +177,7 @@ void MicrosoftStoreBackend::purchaseProduct(AbstractProduct * product)
         constexpr uint32_t SERVICE_UNAVAILABLE = 0x80070005; // E_ACCESSDENIED
         PurchaseError error = PurchaseError::ServiceUnavailable;
         QString message = "Microsoft Store service is unavailable";
-        emit purchaseFailed(error, SERVICE_UNAVAILABLE, message);
+        emit purchaseFailed(static_cast<int>(error), SERVICE_UNAVAILABLE, message);
         return;
     }
     
@@ -187,7 +187,7 @@ void MicrosoftStoreBackend::purchaseProduct(AbstractProduct * product)
         constexpr uint32_t UNKNOWN_ERROR = 0x80004005; // E_FAIL
         PurchaseError error = PurchaseError::UnknownError;
         QString message = "No window handle available for purchase";
-        emit purchaseFailed(error, UNKNOWN_ERROR, message);
+        emit purchaseFailed(static_cast<int>(error), UNKNOWN_ERROR, message);
         return;
     }
     
@@ -227,7 +227,7 @@ void MicrosoftStoreBackend::onPurchaseComplete(AbstractProduct* product, StorePu
         // Use the real Windows StorePurchaseStatus as platform code
         PurchaseError error = mapWindowsErrorToPurchaseError(static_cast<uint32_t>(status));
         QString message = getWindowsErrorMessage(static_cast<uint32_t>(status));
-        emit purchaseFailed(error, static_cast<uint32_t>(status), message);
+        emit purchaseFailed(static_cast<int>(error), static_cast<uint32_t>(status), message);
     }
 }
 

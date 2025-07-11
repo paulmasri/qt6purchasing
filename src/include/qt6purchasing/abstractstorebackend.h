@@ -69,7 +69,7 @@ signals:
     void productRegistered(AbstractProduct * product);
     void purchaseSucceeded(AbstractTransaction * transaction);
     void purchaseRestored(AbstractTransaction * transaction);
-    void purchaseFailed(PurchaseError error, int platformCode, const QString& message);
+    void purchaseFailed(int error, int platformCode, const QString& message);
     void consumePurchaseSucceeded(AbstractTransaction * transaction);
     void consumePurchaseFailed(AbstractTransaction * transaction);
 };
