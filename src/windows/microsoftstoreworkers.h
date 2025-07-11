@@ -5,6 +5,7 @@
 #include <QString>
 #include <QVariantMap>
 #include <windows.h>
+#include <winrt/Windows.Services.Store.h>
 
 class AbstractProduct;
 class MicrosoftStoreBackend;
@@ -52,7 +53,7 @@ public slots:
     void performPurchase();
 
 signals:
-    void purchaseComplete(bool success, int status, const QString &result);
+    void purchaseComplete(winrt::Windows::Services::Store::StorePurchaseStatus status);
     void finished();
 
 private:

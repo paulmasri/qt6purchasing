@@ -94,29 +94,13 @@ void StorePurchaseWorker::performPurchase()
         auto result = storeContext.RequestPurchaseAsync(
             winrt::hstring(_productId.toStdWString())).get();
         
-        switch (result.Status()) {
-            case StorePurchaseStatus::Succeeded:
-                emit purchaseComplete(true, static_cast<int>(result.Status()), "Success");
-                break;
-            case StorePurchaseStatus::AlreadyPurchased:
-                emit purchaseComplete(false, static_cast<int>(result.Status()), "AlreadyPurchased");
-                break;
-            case StorePurchaseStatus::NotPurchased:
-                emit purchaseComplete(false, static_cast<int>(result.Status()), "Cancelled");
-                break;
-            case StorePurchaseStatus::NetworkError:
-                emit purchaseComplete(false, static_cast<int>(result.Status()), "NetworkError");
-                break;
-            case StorePurchaseStatus::ServerError:
-                emit purchaseComplete(false, static_cast<int>(result.Status()), "ServerError");
-                break;
-            default:
-                emit purchaseComplete(false, static_cast<int>(result.Status()), "UnknownError");
-        }
+        emit purchaseComplete(result.Status());
     } catch (const winrt::hresult_error& e) {
-        emit purchaseComplete(false, -1, QString::fromWCharArray(e.message().c_str()));
+        qWarning() << "Purchase HRESULT error:" << QString::fromWCharArray(e.message().c_str());
+        emit purchaseComplete(StorePurchaseStatus::ServerError);
     } catch (...) {
-        emit purchaseComplete(false, -1, "Unknown exception");
+        qWarning() << "Unknown exception during purchase";
+        emit purchaseComplete(StorePurchaseStatus::ServerError);
     }
     
     emit finished();
