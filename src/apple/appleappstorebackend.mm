@@ -107,7 +107,15 @@ AppleAppStoreBackend* AppleAppStoreBackend::s_currentInstance = nullptr;
             QMetaObject::invokeMethod(backend, "purchaseSucceeded", Qt::AutoConnection, Q_ARG(AbstractTransaction*, ta));
             break;
         case AppleAppStoreTransaction::Failed:
-            QMetaObject::invokeMethod(backend, "purchaseFailed", Qt::AutoConnection, Q_ARG(int, transaction.error.code));
+            {
+                int errorCode = transaction.error.code;
+                AbstractStoreBackend::PurchaseError error = AppleAppStoreBackend::mapStoreKitErrorToPurchaseError(errorCode);
+                QString message = AppleAppStoreBackend::getStoreKitErrorMessage(errorCode);
+                QMetaObject::invokeMethod(backend, "purchaseFailed", Qt::AutoConnection, 
+                    Q_ARG(int, static_cast<int>(error)), 
+                    Q_ARG(int, errorCode), 
+                    Q_ARG(QString, message));
+            }
             break;
         case AppleAppStoreTransaction::Restored:
             QMetaObject::invokeMethod(backend, "purchaseRestored", Qt::AutoConnection, Q_ARG(AbstractTransaction*, ta));
@@ -158,4 +166,49 @@ void AppleAppStoreBackend::consumePurchase(AbstractTransaction * transaction)
 {
     [[SKPaymentQueue defaultQueue] finishTransaction:reinterpret_cast<AppleAppStoreTransaction *>(transaction)->nativeTransaction()];
     emit consumePurchaseSucceeded(transaction);
+}
+
+AbstractStoreBackend::PurchaseError AppleAppStoreBackend::mapStoreKitErrorToPurchaseError(int errorCode)
+{
+    switch (errorCode) {
+        case SKErrorPaymentCancelled:
+            return PurchaseError::UserCanceled;
+        case SKErrorPaymentNotAllowed:
+            return PurchaseError::NotAllowed;
+        case SKErrorPaymentInvalid:
+            return PurchaseError::PaymentInvalid;
+        case SKErrorClientInvalid:
+        case SKErrorStoreProductNotAvailable:
+            return PurchaseError::ItemUnavailable;
+        case SKErrorCloudServiceNetworkConnectionFailed:
+        case SKErrorCloudServiceRevoked:
+            return PurchaseError::NetworkError;
+        case SKErrorUnknown:
+        default:
+            return PurchaseError::UnknownError;
+    }
+}
+
+QString AppleAppStoreBackend::getStoreKitErrorMessage(int errorCode)
+{
+    switch (errorCode) {
+        case SKErrorPaymentCancelled:
+            return "User canceled the payment request";
+        case SKErrorPaymentNotAllowed:
+            return "This device is not allowed to make the payment";
+        case SKErrorPaymentInvalid:
+            return "One of the payment parameters was not recognized by the App Store";
+        case SKErrorClientInvalid:
+            return "The client is not allowed to issue the request";
+        case SKErrorStoreProductNotAvailable:
+            return "The requested product is not available in the store";
+        case SKErrorCloudServiceNetworkConnectionFailed:
+            return "The device could not connect to the network";
+        case SKErrorCloudServiceRevoked:
+            return "The user has revoked permission to use this cloud service";
+        case SKErrorUnknown:
+            return "An unknown error occurred";
+        default:
+            return QString("Unknown StoreKit error code: %1").arg(errorCode);
+    }
 }

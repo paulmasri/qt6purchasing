@@ -46,9 +46,11 @@ public:
     void purchaseProduct(AbstractProduct * product) override;
     void consumePurchase(AbstractTransaction * transaction) override;
 
-	static GooglePlayStoreBackend * s_currentInstance;
-	
 private:
+    static PurchaseError mapBillingResponseToPurchaseError(int billingResponseCode);
+    static QString getBillingResponseMessage(int billingResponseCode);
+
+	static GooglePlayStoreBackend * s_currentInstance;
     QJniObject * _googlePlayBillingJavaClass = nullptr;
 };
 

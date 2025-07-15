@@ -80,7 +80,6 @@ elseif(WIN32)
         windows/microsoftstorebackend.h
         windows/microsoftstoreproduct.h
         windows/microsoftstoretransaction.h
-        windows/windowsstorewrappers.h
         windows/microsoftstoreworkers.h
     )
 

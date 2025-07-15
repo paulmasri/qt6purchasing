@@ -5,7 +5,6 @@
 AbstractProduct::AbstractProduct(QObject * parent) : QObject(parent)
 {
     connect(this, &AbstractProduct::identifierChanged, this, &AbstractProduct::registerInStore);
-    connect(this, &AbstractProduct::storeChanged, this, &AbstractProduct::registerInStore);
 }
 
 AbstractStoreBackend* AbstractProduct::findStoreBackend() const
