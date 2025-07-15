@@ -7,8 +7,6 @@ MicrosoftStoreTransaction::MicrosoftStoreTransaction(
     : AbstractTransaction(orderId, parent)
     , _productId(productId)
 {
-    // All transactions created this way are successful
-    _status = 0;
 }
 
 QString MicrosoftStoreTransaction::productId() const
