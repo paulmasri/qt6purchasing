@@ -8,7 +8,7 @@ MicrosoftStoreTransaction::MicrosoftStoreTransaction(
     , _productId(productId)
 {
     // All transactions created this way are successful
-    _status = static_cast<int>(MicrosoftStoreTransactionStatus::Succeeded);
+    _status = 0;
 }
 
 QString MicrosoftStoreTransaction::productId() const
