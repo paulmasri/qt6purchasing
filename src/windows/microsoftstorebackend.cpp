@@ -10,6 +10,9 @@
 #include <QWindow>
 #include <QDateTime>
 
+using namespace winrt::Windows::Services::Store;
+
+
 MicrosoftStoreBackend * MicrosoftStoreBackend::s_currentInstance = nullptr;
 
 MicrosoftStoreBackend::MicrosoftStoreBackend(QObject * parent) 
@@ -144,12 +147,26 @@ void MicrosoftStoreBackend::onProductQueried(AbstractProduct* product, bool succ
             product->setDescription(productData["description"].toString());
             product->setPrice(productData["price"].toString());
             
-            // Map product type
+            // Validate product type matches store configuration
             QString productKind = productData["productKind"].toString();
+            AbstractProduct::ProductType storeType;
             if (productKind == "Durable") {
-                product->setProductType(AbstractProduct::Unlockable);
+                storeType = AbstractProduct::Unlockable;
             } else if (productKind == "UnmanagedConsumable") {
-                product->setProductType(AbstractProduct::Consumable);
+                storeType = AbstractProduct::Consumable;
+            } else {
+                qCritical() << "Unknown Microsoft Store product kind:" << productKind << "for product:" << product->identifier();
+                product->setStatus(AbstractProduct::Unknown);
+                return;
+            }
+
+            if (storeType != product->productType()) {
+                qCritical() << "Product type mismatch!" << product->identifier() 
+                            << "Microsoft Store ID:" << productData["storeId"].toString()
+                            << "Expected:" << (product->productType() == AbstractProduct::Consumable ? "Consumable" : "Unlockable")
+                            << "Store reports:" << productKind;
+                product->setStatus(AbstractProduct::IncorrectProductType);
+                return;
             }
             
             // Track the product for later reference
@@ -170,13 +187,21 @@ void MicrosoftStoreBackend::purchaseProduct(AbstractProduct * product)
 {
     if (!isConnected()) {
         qWarning() << "Cannot purchase - store not connected";
-        emit purchaseFailed(static_cast<int>(ServiceUnavailable));
+        // Use a generic service unavailable error code
+        constexpr uint32_t SERVICE_UNAVAILABLE = 0x80070005; // E_ACCESSDENIED
+        PurchaseError error = PurchaseError::ServiceUnavailable;
+        QString message = "Microsoft Store service is unavailable";
+        emit purchaseFailed(static_cast<int>(error), SERVICE_UNAVAILABLE, message);
         return;
     }
     
     if (!_hwnd) {
         qWarning() << "No window handle available for purchase";
-        emit purchaseFailed(static_cast<int>(UnknownError));
+        // Use a generic unknown error code
+        constexpr uint32_t UNKNOWN_ERROR = 0x80004005; // E_FAIL
+        PurchaseError error = PurchaseError::UnknownError;
+        QString message = "No window handle available for purchase";
+        emit purchaseFailed(static_cast<int>(error), UNKNOWN_ERROR, message);
         return;
     }
     
@@ -195,8 +220,8 @@ void MicrosoftStoreBackend::purchaseProduct(AbstractProduct * product)
     worker->moveToThread(thread);
     connect(thread, &QThread::started, worker, &StorePurchaseWorker::performPurchase);
     connect(worker, &StorePurchaseWorker::purchaseComplete, 
-            [this, product](bool success, int status, const QString& result) {
-                this->onPurchaseComplete(product, success, status, result);
+            [this, product](StorePurchaseStatus status) {
+                this->onPurchaseComplete(product, status);
             });
     connect(worker, &StorePurchaseWorker::finished, thread, &QThread::quit);
     connect(thread, &QThread::finished, thread, &QThread::deleteLater);
@@ -205,24 +230,18 @@ void MicrosoftStoreBackend::purchaseProduct(AbstractProduct * product)
     thread->start();
 }
 
-void MicrosoftStoreBackend::onPurchaseComplete(AbstractProduct* product, bool success, int status, const QString& result)
+void MicrosoftStoreBackend::onPurchaseComplete(AbstractProduct* product, StorePurchaseStatus status)
 {
-    if (success) {
+    if (status == StorePurchaseStatus::Succeeded) {
         // Create minimal transaction for success
         QString orderId = QString("ms_%1_%2").arg(product->identifier()).arg(QDateTime::currentMSecsSinceEpoch());
         auto transaction = new MicrosoftStoreTransaction(orderId, product->identifier(), this);
         emit purchaseSucceeded(transaction);
     } else {
-        // Map status to error code
-        StoreErrorCode errorCode = UnknownError;
-        if (result == "Cancelled") {
-            errorCode = UserCanceled;
-        } else if (result == "NetworkError") {
-            errorCode = NetworkError;
-        } else if (result == "ServerError") {
-            errorCode = ServiceUnavailable;
-        }
-        emit purchaseFailed(static_cast<int>(errorCode));
+        // Use the real Windows StorePurchaseStatus as platform code
+        PurchaseError error = mapWindowsErrorToPurchaseError(static_cast<uint32_t>(status));
+        QString message = getWindowsErrorMessage(static_cast<uint32_t>(status));
+        emit purchaseFailed(static_cast<int>(error), static_cast<uint32_t>(status), message);
     }
 }
 
@@ -363,16 +382,38 @@ void MicrosoftStoreBackend::onConsumableFulfillmentComplete(const QString& order
     // Note: consumePurchase success/failure signals are now emitted in the lambda to ensure transaction validity
 }
 
-MicrosoftStoreBackend::StoreErrorCode MicrosoftStoreBackend::mapStoreError(uint32_t hresult)
+AbstractStoreBackend::PurchaseError MicrosoftStoreBackend::mapWindowsErrorToPurchaseError(uint32_t statusCode)
 {
-    // Map common HRESULT values to our error codes
-    switch (hresult) {
-        case 0x80070005: // E_ACCESSDENIED
-            return ServiceUnavailable;
-        case 0x800704CF: // ERROR_NETWORK_UNREACHABLE
-        case 0x80072EE7: // ERROR_INTERNET_NAME_NOT_RESOLVED
-            return NetworkError;
+    switch (statusCode) {
+        case 0: // StorePurchaseStatus::Succeeded
+            return PurchaseError::NoError;
+        case 1: // StorePurchaseStatus::AlreadyPurchased
+            return PurchaseError::AlreadyPurchased;
+        case 2: // StorePurchaseStatus::NotPurchased
+            return PurchaseError::UserCanceled;
+        case 3: // StorePurchaseStatus::NetworkError
+            return PurchaseError::NetworkError;
+        case 4: // StorePurchaseStatus::ServerError
+            return PurchaseError::ServiceUnavailable;
         default:
-            return UnknownError;
+            return PurchaseError::UnknownError;
+    }
+}
+
+QString MicrosoftStoreBackend::getWindowsErrorMessage(uint32_t statusCode)
+{
+    switch (statusCode) {
+        case 0: // StorePurchaseStatus::Succeeded
+            return "Purchase completed successfully";
+        case 1: // StorePurchaseStatus::AlreadyPurchased
+            return "User already owns this item";
+        case 2: // StorePurchaseStatus::NotPurchased
+            return "Purchase was not completed (user canceled or payment failed)";
+        case 3: // StorePurchaseStatus::NetworkError
+            return "Network connection failed during purchase";
+        case 4: // StorePurchaseStatus::ServerError
+            return "Microsoft Store server error occurred";
+        default:
+            return QString("Unknown Windows StorePurchaseStatus: %1").arg(statusCode);
     }
 }

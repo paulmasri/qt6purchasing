@@ -18,6 +18,22 @@ class AbstractStoreBackend : public QObject
     QML_NAMED_ELEMENT(AbstractStoreBackend)
     QML_UNCREATABLE("AbstractStoreBackend is an abstract base class")
 
+public:
+    enum class PurchaseError {
+        NoError,
+        UserCanceled,
+        NetworkError,
+        ServiceUnavailable,
+        ItemUnavailable,
+        ItemNotOwned,
+        AlreadyPurchased,
+        DeveloperError,
+        PaymentInvalid,
+        NotAllowed,
+        UnknownError
+    };
+    Q_ENUM(PurchaseError)
+
     Q_PROPERTY(QQmlListProperty<AbstractProduct> productsQml READ productsQml NOTIFY productsChanged)
     Q_CLASSINFO("DefaultProperty", "productsQml")
     Q_PROPERTY(bool connected READ isConnected NOTIFY connectedChanged FINAL)
@@ -53,7 +69,7 @@ signals:
     void productRegistered(AbstractProduct * product);
     void purchaseSucceeded(AbstractTransaction * transaction);
     void purchaseRestored(AbstractTransaction * transaction);
-    void purchaseFailed(int code);
+    void purchaseFailed(int error, int platformCode, const QString& message);
     void consumePurchaseSucceeded(AbstractTransaction * transaction);
     void consumePurchaseFailed(AbstractTransaction * transaction);
 };

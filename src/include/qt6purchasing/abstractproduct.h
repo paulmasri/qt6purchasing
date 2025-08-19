@@ -35,9 +35,10 @@ public:
     };
     Q_ENUM(ProductType)
     enum ProductStatus {
-        Unitialized,
+        Uninitialized,
         PendingRegistration,
         Registered,
+        IncorrectProductType,
         Unknown
     };
     Q_ENUM(ProductStatus)
@@ -69,7 +70,7 @@ public:
 protected:
     explicit AbstractProduct(QObject * parent = nullptr);
 
-    ProductStatus _status = ProductStatus::Unitialized;
+    ProductStatus _status = ProductStatus::Uninitialized;
     QString _identifier;
     QString _description;
     QString _price;
@@ -83,7 +84,6 @@ private:
     AbstractStoreBackend* findStoreBackend() const;
 
 signals:
-    void storeChanged();
     void statusChanged();
     void identifierChanged();
     void descriptionChanged();

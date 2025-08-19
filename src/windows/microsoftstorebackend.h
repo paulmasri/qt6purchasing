@@ -6,6 +6,7 @@
 #include <QVariantMap>
 #include <QMap>
 #include <windows.h>
+#include <winrt/Windows.Services.Store.h>
 
 class MicrosoftStoreBackend : public AbstractStoreBackend
 {
@@ -13,15 +14,6 @@ class MicrosoftStoreBackend : public AbstractStoreBackend
     QML_NAMED_ELEMENT(Store)
 
 public:
-    enum StoreErrorCode {
-        Success = 0,
-        NetworkError = 1,
-        UserCanceled = 2,
-        ServiceUnavailable = 3,
-        UnknownError = 99
-    };
-    Q_ENUM(StoreErrorCode)
-
     explicit MicrosoftStoreBackend(QObject * parent = nullptr);
     ~MicrosoftStoreBackend();
 
@@ -35,7 +27,7 @@ public:
 
 private slots:
     void onProductQueried(AbstractProduct* product, bool success, const QVariantMap& productData);
-    void onPurchaseComplete(AbstractProduct* product, bool success, int status, const QString& result);
+    void onPurchaseComplete(AbstractProduct* product, winrt::Windows::Services::Store::StorePurchaseStatus status);
     void onRestoreComplete(const QList<QVariantMap> &restoredProducts);
     void onAllProductsQueried(const QList<QVariantMap> &products);
 
@@ -46,7 +38,8 @@ private:
     void initializeWindowHandle();
     void queryAllProducts();
     void onConsumableFulfillmentComplete(const QString& orderId, const QString& productId, bool success, const QString& result);
-    StoreErrorCode mapStoreError(uint32_t hresult);
+    static PurchaseError mapWindowsErrorToPurchaseError(uint32_t errorCode);
+    static QString getWindowsErrorMessage(uint32_t errorCode);
 };
 
 #endif // MICROSOFTSTOREBACKEND_H

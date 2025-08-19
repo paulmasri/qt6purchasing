@@ -60,8 +60,8 @@ AbstractStoreBackend::AbstractStoreBackend(QObject * parent) : QObject(parent)
         });
     });
 
-    connect(this, &AbstractStoreBackend::purchaseFailed, [](int code){
-        qDebug() << "purchaseFailed:" << code;
+    connect(this, &AbstractStoreBackend::purchaseFailed, [](int error, int platformCode, const QString& message){
+        qDebug() << "purchaseFailed:" << "error=" << error << "platformCode=" << platformCode << "message=" << message;
     });
 
     connect(this, &AbstractStoreBackend::consumePurchaseSucceeded, [this](AbstractTransaction * transaction){
