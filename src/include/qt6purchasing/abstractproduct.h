@@ -95,7 +95,7 @@ signals:
 #endif
 
     void purchaseSucceeded(AbstractTransaction * transaction);
-    void purchaseFailed(AbstractTransaction * transaction);
+    void purchaseFailed(int error, int platformCode, const QString& message);
     void purchaseRestored(AbstractTransaction * transaction);
     void consumePurchaseSucceeded(AbstractTransaction * transaction);
     void consumePurchaseFailed(AbstractTransaction * transaction);
