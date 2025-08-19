@@ -60,8 +60,19 @@ AbstractStoreBackend::AbstractStoreBackend(QObject * parent) : QObject(parent)
         });
     });
 
-    connect(this, &AbstractStoreBackend::purchaseFailed, [](int error, int platformCode, const QString& message){
-        qDebug() << "purchaseFailed:" << "error=" << error << "platformCode=" << platformCode << "message=" << message;
+    connect(this, &AbstractStoreBackend::purchaseFailed, 
+            [this](const QString& productId, int error, int platformCode, const QString& message){
+        qDebug() << "purchaseFailed:" << "productId=" << productId 
+                 << "error=" << error << "platformCode=" << platformCode 
+                 << "message=" << message;
+        
+        // Route to the appropriate product
+        AbstractProduct * ap = product(productId);
+        if (ap) {
+            emit ap->purchaseFailed(error, platformCode, message);
+        } else {
+            qWarning() << "Failed to find product for purchase failure:" << productId;
+        }
     });
 
     connect(this, &AbstractStoreBackend::consumePurchaseSucceeded, [this](AbstractTransaction * transaction){

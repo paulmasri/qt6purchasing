@@ -38,7 +38,7 @@ public:
     static void productRegistered(JNIEnv * env, jobject object, jstring productJson);
     static void purchaseSucceeded(JNIEnv * env, jobject object, jstring purchaseJson);
     static void purchaseRestored(JNIEnv * env, jobject object, jstring purchaseJson);
-    static void purchaseFailed(JNIEnv * env, jobject object, jint billingResponseCode);
+    static void purchaseFailed(JNIEnv * env, jobject object, jstring productId, jint billingResponseCode);
     static void purchaseConsumed(JNIEnv * env, jobject object, jstring purchaseJson);
 
     void startConnection() override;

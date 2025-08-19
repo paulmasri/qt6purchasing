@@ -22,13 +22,14 @@ public class GooglePlayBilling {
 
     private static native void purchaseSucceeded(String purchaseJson);
     private static native void purchaseRestored(String purchaseJson);
-    private static native void purchaseFailed(int billingResponseCode);
+    private static native void purchaseFailed(String productId, int billingResponseCode);
     private static native void purchaseConsumed(String purchaseJson);
 
     private Context context;
     private PurchasesUpdatedListener purchasesUpdatedListener;
     private PurchasesResponseListener purchasesResponseListener;
     private BillingClient billingClient;
+    private String pendingProductId = null;
 
     public GooglePlayBilling(Context cnt) {
         System.out.println("GooglePlayBilling constructor called with context argument " + cnt);
@@ -37,15 +38,16 @@ public class GooglePlayBilling {
         purchasesUpdatedListener = new PurchasesUpdatedListener() {
             public void onPurchasesUpdated(BillingResult billingResult, List<Purchase> purchases) {
                 if (billingResult.getResponseCode() == BillingResponseCode.OK && purchases != null) {
+                    // Success - clear pending
+                    pendingProductId = null;
                     for (Purchase purchase : purchases) {
                         purchaseSucceeded(purchase.getOriginalJson());
                     }
-                } else if (billingResult.getResponseCode() == BillingResponseCode.USER_CANCELED) {
-                    // Handle an error caused by a user cancelling the purchase flow.
-                    purchaseFailed(billingResult.getResponseCode());
                 } else {
-                    // Handle any other error codes.
-                    purchaseFailed(billingResult.getResponseCode());
+                    // Failure - use pending product ID
+                    String productId = pendingProductId != null ? pendingProductId : "unknown";
+                    pendingProductId = null;  // Clear after use
+                    purchaseFailed(productId, billingResult.getResponseCode());
                 }
             }
         };
@@ -115,6 +117,10 @@ public class GooglePlayBilling {
 
     public void purchaseProduct(Activity activity, final String jsonSkuDetails) {
         try {
+            // Extract and store the product ID before launching billing flow
+            JSONObject obj = new JSONObject(jsonSkuDetails);
+            pendingProductId = obj.getString("productId");
+            
             SkuDetails purchaseThis = new SkuDetails(jsonSkuDetails);
 
             BillingFlowParams billingFlowParams = BillingFlowParams.newBuilder()
@@ -122,6 +128,7 @@ public class GooglePlayBilling {
                 .build();
             int responseCode = billingClient.launchBillingFlow(activity, billingFlowParams).getResponseCode();
         } catch (JSONException e) {
+            pendingProductId = null;  // Clean up on error
             throw new RuntimeException(e);
         }
     };

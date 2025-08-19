@@ -26,7 +26,7 @@ GooglePlayStoreBackend::GooglePlayStoreBackend(QObject * parent) : AbstractStore
         {"productRegistered", "(Ljava/lang/String;)V", reinterpret_cast<void *>(productRegistered)},
         {"purchaseSucceeded", "(Ljava/lang/String;)V", reinterpret_cast<void *>(purchaseSucceeded)},
         {"purchaseRestored", "(Ljava/lang/String;)V", reinterpret_cast<void *>(purchaseRestored)},
-        {"purchaseFailed", "(I)V", reinterpret_cast<void *>(purchaseFailed)},
+        {"purchaseFailed", "(Ljava/lang/String;I)V", reinterpret_cast<void *>(purchaseFailed)},
         {"purchaseConsumed", "(Ljava/lang/String;)V", reinterpret_cast<void *>(purchaseConsumed)},
     };
     QJniEnvironment env;
@@ -184,7 +184,7 @@ void GooglePlayStoreBackend::consumePurchase(AbstractTransaction * transaction)
     emit backend->purchaseRestored(transaction);
 }
 
-/*static*/ void GooglePlayStoreBackend::purchaseFailed(JNIEnv *env, jobject object, jint billingResponseCode)
+/*static*/ void GooglePlayStoreBackend::purchaseFailed(JNIEnv *env, jobject object, jstring productId, jint billingResponseCode)
 {
     GooglePlayStoreBackend* backend = GooglePlayStoreBackend::s_currentInstance;
     if (!backend) {
@@ -192,9 +192,13 @@ void GooglePlayStoreBackend::consumePurchase(AbstractTransaction * transaction)
         return;
     }
 
+    const char* productIdCStr = env->GetStringUTFChars(productId, nullptr);
+    QString prodId = QString::fromUtf8(productIdCStr);
+    env->ReleaseStringUTFChars(productId, productIdCStr);
+
     PurchaseError error = mapBillingResponseToPurchaseError(billingResponseCode);
     QString message = getBillingResponseMessage(billingResponseCode);
-    emit backend->purchaseFailed(static_cast<int>(error), billingResponseCode, message);
+    emit backend->purchaseFailed(prodId, static_cast<int>(error), billingResponseCode, message);
 }
 
 /*static*/ void GooglePlayStoreBackend::purchaseConsumed(JNIEnv *env, jobject object, jstring message)

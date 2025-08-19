@@ -108,10 +108,13 @@ AppleAppStoreBackend* AppleAppStoreBackend::s_currentInstance = nullptr;
             break;
         case AppleAppStoreTransaction::Failed:
             {
+                // Extract product ID from the transaction
+                QString productId = QString::fromNSString(transaction.payment.productIdentifier);
                 int errorCode = transaction.error.code;
                 AbstractStoreBackend::PurchaseError error = AppleAppStoreBackend::mapStoreKitErrorToPurchaseError(errorCode);
                 QString message = AppleAppStoreBackend::getStoreKitErrorMessage(errorCode);
                 QMetaObject::invokeMethod(backend, "purchaseFailed", Qt::AutoConnection, 
+                    Q_ARG(QString, productId),
                     Q_ARG(int, static_cast<int>(error)), 
                     Q_ARG(int, errorCode), 
                     Q_ARG(QString, message));
