@@ -135,13 +135,14 @@ void GooglePlayStoreBackend::consumePurchase(AbstractTransaction * transaction)
         return;
     }
     
+    // Only consumables need fulfillment
     if (product->productType() != AbstractProduct::Consumable) {
-        qDebug() << "Product is not consumable, skipping consume API call";
+        qDebug() << "Product is not consumable (type:" << product->productType() << "), no fulfillment needed";
         emit consumePurchaseSucceeded(transaction);
         return;
     }
     
-    // Existing consume logic for consumables only
+    // For consumables, we need to report fulfillment to Google Play Store
     QJsonObject jsonTransaction = reinterpret_cast<GooglePlayStoreTransaction *>(transaction)->json();
 
     _googlePlayBillingJavaClass->callMethod<void>(
