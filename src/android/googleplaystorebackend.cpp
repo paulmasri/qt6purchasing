@@ -127,6 +127,21 @@ void GooglePlayStoreBackend::purchaseProduct(AbstractProduct * product)
 
 void GooglePlayStoreBackend::consumePurchase(AbstractTransaction * transaction)
 {
+    // Only call consumeAsync for Consumable products
+    AbstractProduct* product = this->product(transaction->productId());
+    if (!product) {
+        qWarning() << "Cannot find product for transaction:" << transaction->productId();
+        emit consumePurchaseSucceeded(transaction);
+        return;
+    }
+    
+    if (product->productType() != AbstractProduct::Consumable) {
+        qDebug() << "Product is not consumable, skipping consume API call";
+        emit consumePurchaseSucceeded(transaction);
+        return;
+    }
+    
+    // Existing consume logic for consumables only
     QJsonObject jsonTransaction = reinterpret_cast<GooglePlayStoreTransaction *>(transaction)->json();
 
     _googlePlayBillingJavaClass->callMethod<void>(

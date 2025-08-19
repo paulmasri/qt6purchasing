@@ -38,6 +38,7 @@ public:
         Uninitialized,
         PendingRegistration,
         Registered,
+        IncorrectProductType,
         Unknown
     };
     Q_ENUM(ProductStatus)

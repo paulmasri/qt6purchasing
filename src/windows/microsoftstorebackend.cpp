@@ -147,12 +147,26 @@ void MicrosoftStoreBackend::onProductQueried(AbstractProduct* product, bool succ
             product->setDescription(productData["description"].toString());
             product->setPrice(productData["price"].toString());
             
-            // Map product type
+            // Validate product type matches store configuration
             QString productKind = productData["productKind"].toString();
+            AbstractProduct::ProductType storeType;
             if (productKind == "Durable") {
-                product->setProductType(AbstractProduct::Unlockable);
+                storeType = AbstractProduct::Unlockable;
             } else if (productKind == "UnmanagedConsumable") {
-                product->setProductType(AbstractProduct::Consumable);
+                storeType = AbstractProduct::Consumable;
+            } else {
+                qCritical() << "Unknown Microsoft Store product kind:" << productKind << "for product:" << product->identifier();
+                product->setStatus(AbstractProduct::Unknown);
+                return;
+            }
+
+            if (storeType != product->productType()) {
+                qCritical() << "Product type mismatch!" << product->identifier() 
+                            << "Microsoft Store ID:" << productData["storeId"].toString()
+                            << "Expected:" << (product->productType() == AbstractProduct::Consumable ? "Consumable" : "Unlockable")
+                            << "Store reports:" << productKind;
+                product->setStatus(AbstractProduct::IncorrectProductType);
+                return;
             }
             
             // Track the product for later reference
