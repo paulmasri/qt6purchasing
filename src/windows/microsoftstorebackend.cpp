@@ -67,6 +67,9 @@ void MicrosoftStoreBackend::startConnection()
     
     // Query all products on startup
     queryAllProducts();
+    
+    // Automatically restore existing purchases on startup
+    restorePurchases();
 }
 
 void MicrosoftStoreBackend::queryAllProducts()
