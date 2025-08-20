@@ -20,36 +20,54 @@ AbstractStoreBackend* AbstractProduct::findStoreBackend() const
 
 void AbstractProduct::setDescription(QString value)
 {
+    if (_description == value)
+        return;
+    
     _description = value;
     emit descriptionChanged();
 }
 
 void AbstractProduct::setIdentifier(const QString &value)
 {
+    if (_identifier == value)
+        return;
+    
     _identifier = value;
     emit identifierChanged();
 }
 
 void AbstractProduct::setPrice(const QString &value)
 {
+    if (_price == value)
+        return;
+    
     _price = value;
     emit priceChanged();
 }
 
 void AbstractProduct::setProductType(ProductType type)
 {
+    if (_productType == type)
+        return;
+    
     _productType = type;
     emit productTypeChanged();
 }
 
 void AbstractProduct::setTitle(const QString &value)
 {
+    if (_title == value)
+        return;
+    
     _title = value;
     emit titleChanged();
 }
 
 void AbstractProduct::setStatus(ProductStatus status)
 {
+    if (_status == status)
+        return;
+    
     _status = status;
     qDebug() << "Product" << _identifier << _status;
     emit statusChanged();
@@ -58,6 +76,9 @@ void AbstractProduct::setStatus(ProductStatus status)
 #ifdef Q_OS_WIN
 void AbstractProduct::setMicrosoftStoreId(const QString &value)
 {
+    if (_microsoftStoreId == value)
+        return;
+    
     _microsoftStoreId = value;
     emit microsoftStoreIdChanged();
 }
