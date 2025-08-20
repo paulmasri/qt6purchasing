@@ -226,7 +226,7 @@ AppleAppStoreBackend* AppleAppStoreBackend::s_currentInstance = nullptr;
             QMetaObject::invokeMethod(backend, "purchaseRestored", Qt::AutoConnection, Q_ARG(AbstractTransaction*, ta));
             break;
         case AppleAppStoreTransaction::Deferred:
-            //unhandled
+            QMetaObject::invokeMethod(backend, "purchasePending", Qt::AutoConnection, Q_ARG(AbstractTransaction*, ta));
             break;
         }
     }
