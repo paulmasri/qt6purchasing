@@ -8,7 +8,7 @@ AbstractStoreBackend::AbstractStoreBackend(QObject * parent) : QObject(parent)
 {
     qDebug() << "Creating store backend";
 
-    connect(this, &AbstractStoreBackend::connectedChanged, [this]() {
+    connect(this, &AbstractStoreBackend::connectedChanged, this, [this]() {
         if (isConnected()) {
             qDebug() << "Connected to store";
             qDebug() << "Found" << _products.size() << "product(s) awaiting registration";
@@ -20,11 +20,11 @@ AbstractStoreBackend::AbstractStoreBackend(QObject * parent) : QObject(parent)
         }
     });
 
-    connect(this, &AbstractStoreBackend::productRegistered, [](AbstractProduct * product){
+    connect(this, &AbstractStoreBackend::productRegistered, this, [](AbstractProduct * product){
         qDebug() << "Product registered:" << product->identifier();
     });
 
-    connect(this, &AbstractStoreBackend::purchaseSucceeded, [this](AbstractTransaction * transaction){
+    connect(this, &AbstractStoreBackend::purchaseSucceeded, this, [this](AbstractTransaction * transaction){
         qDebug() << "purchaseSucceeded:" << transaction->orderId();
 
         AbstractProduct * ap = product(transaction->productId());
@@ -42,7 +42,7 @@ AbstractStoreBackend::AbstractStoreBackend(QObject * parent) : QObject(parent)
         });
     });
 
-    connect(this, &AbstractStoreBackend::purchaseRestored, [this](AbstractTransaction * transaction){
+    connect(this, &AbstractStoreBackend::purchaseRestored, this, [this](AbstractTransaction * transaction){
         qDebug() << "purchaseRestored:" << transaction->orderId();
 
         AbstractProduct * ap = product(transaction->productId());
@@ -60,7 +60,7 @@ AbstractStoreBackend::AbstractStoreBackend(QObject * parent) : QObject(parent)
         });
     });
 
-    connect(this, &AbstractStoreBackend::purchaseFailed, 
+    connect(this, &AbstractStoreBackend::purchaseFailed, this,
             [this](const QString& productId, int error, int platformCode, const QString& message){
         qDebug() << "purchaseFailed:" << "productId=" << productId 
                  << "error=" << error << "platformCode=" << platformCode 
@@ -75,7 +75,7 @@ AbstractStoreBackend::AbstractStoreBackend(QObject * parent) : QObject(parent)
         }
     });
 
-    connect(this, &AbstractStoreBackend::consumePurchaseSucceeded, [this](AbstractTransaction * transaction){
+    connect(this, &AbstractStoreBackend::consumePurchaseSucceeded, this, [this](AbstractTransaction * transaction){
         qDebug() << "consumePurchaseSucceeded:" << transaction->orderId();
 
         AbstractProduct * ap = product(transaction->productId());
@@ -93,7 +93,7 @@ AbstractStoreBackend::AbstractStoreBackend(QObject * parent) : QObject(parent)
         });
     });
 
-    connect(this, &AbstractStoreBackend::consumePurchaseFailed, [this](AbstractTransaction * transaction){
+    connect(this, &AbstractStoreBackend::consumePurchaseFailed, this, [this](AbstractTransaction * transaction){
         qDebug() << "consumePurchaseFailed:" << transaction->orderId();
 
         AbstractProduct * ap = product(transaction->productId());
