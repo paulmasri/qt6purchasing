@@ -21,6 +21,7 @@ public class GooglePlayBilling {
     private static native void productRegistered(String productJson);
 
     private static native void purchaseSucceeded(String purchaseJson);
+    private static native void purchasePending(String purchaseJson);
     private static native void purchaseRestored(String purchaseJson);
     private static native void purchaseFailed(String productId, int billingResponseCode);
     private static native void purchaseConsumed(String purchaseJson);
@@ -38,10 +39,21 @@ public class GooglePlayBilling {
         purchasesUpdatedListener = new PurchasesUpdatedListener() {
             public void onPurchasesUpdated(BillingResult billingResult, List<Purchase> purchases) {
                 if (billingResult.getResponseCode() == BillingResponseCode.OK && purchases != null) {
-                    // Success - clear pending
+                    // Success - clear pending and check purchase states
                     pendingProductId = null;
                     for (Purchase purchase : purchases) {
-                        purchaseSucceeded(purchase.getOriginalJson());
+                        if (purchase.getPurchaseState() == Purchase.PurchaseState.PENDING) {
+                            // Purchase is awaiting approval (e.g., parental approval, payment method verification)
+                            purchasePending(purchase.getOriginalJson());
+                        } else if (purchase.getPurchaseState() == Purchase.PurchaseState.PURCHASED) {
+                            // Purchase completed successfully
+                            purchaseSucceeded(purchase.getOriginalJson());
+                        } else {
+                            // Unhandled purchase state - treat as unknown error
+                            debugMessage("Unhandled purchase state: " + purchase.getPurchaseState());
+                            String productId = pendingProductId != null ? pendingProductId : "unknown";
+                            purchaseFailed(productId, BillingResponseCode.ERROR);
+                        }
                     }
                 } else {
                     // Failure - use pending product ID

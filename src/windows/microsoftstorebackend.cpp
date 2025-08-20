@@ -62,6 +62,7 @@ void MicrosoftStoreBackend::startConnection()
     
     // Simple connection check - we'll initialize StoreContext in workers
     setConnected(true);
+    setCanMakePurchases(canMakePurchases());
     qDebug() << "Microsoft Store connection established";
     
     // Query all products on startup
@@ -383,6 +384,12 @@ void MicrosoftStoreBackend::onConsumableFulfillmentComplete(const QString& order
     }
     
     // Note: consumePurchase success/failure signals are now emitted in the lambda to ensure transaction validity
+}
+
+bool MicrosoftStoreBackend::canMakePurchases() const
+{
+    // For Windows, we can make purchases if we're connected to the store
+    return isConnected();
 }
 
 AbstractStoreBackend::PurchaseError MicrosoftStoreBackend::mapWindowsErrorToPurchaseError(uint32_t statusCode)

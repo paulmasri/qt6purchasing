@@ -37,6 +37,7 @@ public:
     static void connectedChangedHelper(JNIEnv * env, jobject object, jboolean connected);
     static void productRegistered(JNIEnv * env, jobject object, jstring productJson);
     static void purchaseSucceeded(JNIEnv * env, jobject object, jstring purchaseJson);
+    static void purchasePending(JNIEnv * env, jobject object, jstring purchaseJson);
     static void purchaseRestored(JNIEnv * env, jobject object, jstring purchaseJson);
     static void purchaseFailed(JNIEnv * env, jobject object, jstring productId, jint billingResponseCode);
     static void purchaseConsumed(JNIEnv * env, jobject object, jstring purchaseJson);
@@ -45,6 +46,7 @@ public:
     void registerProduct(AbstractProduct * product) override;
     void purchaseProduct(AbstractProduct * product) override;
     void consumePurchase(AbstractTransaction * transaction) override;
+    bool canMakePurchases() const override;
 
 private:
     static PurchaseError mapBillingResponseToPurchaseError(int billingResponseCode);

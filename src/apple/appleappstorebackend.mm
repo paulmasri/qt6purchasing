@@ -11,6 +11,51 @@
 
 AppleAppStoreBackend* AppleAppStoreBackend::s_currentInstance = nullptr;
 
+// Early observer that queues transactions until full backend is ready
+@interface EarlyTransactionObserver : NSObject <SKPaymentTransactionObserver>
+{
+    NSMutableArray<SKPaymentTransaction *> *queuedTransactions;
+}
+
+@property (class, readonly) EarlyTransactionObserver *shared;
+-(NSArray<SKPaymentTransaction *> *)getQueuedTransactions;
+-(void)clearQueuedTransactions;
+
+@end
+
+@implementation EarlyTransactionObserver
+
++ (EarlyTransactionObserver *)shared {
+    static EarlyTransactionObserver *sharedInstance = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        sharedInstance = [[self alloc] init];
+    });
+    return sharedInstance;
+}
+
+-(id)init {
+    if (self = [super init]) {
+        queuedTransactions = [[NSMutableArray<SKPaymentTransaction *> alloc] init];
+    }
+    return self;
+}
+
+-(NSArray<SKPaymentTransaction *> *)getQueuedTransactions {
+    return [queuedTransactions copy];
+}
+
+-(void)clearQueuedTransactions {
+    [queuedTransactions removeAllObjects];
+}
+
+-(void)paymentQueue:(SKPaymentQueue *)queue updatedTransactions:(NSArray<SKPaymentTransaction *> *)transactions {
+    qDebug() << "Early observer received" << transactions.count << "transactions - queueing until backend ready";
+    [queuedTransactions addObjectsFromArray:transactions];
+}
+
+@end
+
 @interface InAppPurchaseManager : NSObject <SKProductsRequestDelegate, SKPaymentTransactionObserver>
 {
     NSMutableArray<SKPaymentTransaction *> *pendingTransactions;
@@ -26,7 +71,18 @@ AppleAppStoreBackend* AppleAppStoreBackend::s_currentInstance = nullptr;
 -(id)init {
     if (self = [super init]) {
         pendingTransactions = [[NSMutableArray<SKPaymentTransaction *> alloc] init];
+        
+        // Replace early observer with this one
+        [[SKPaymentQueue defaultQueue] removeTransactionObserver:[EarlyTransactionObserver shared]];
         [[SKPaymentQueue defaultQueue] addTransactionObserver:self];
+        
+        // Process any queued transactions from early observer
+        NSArray<SKPaymentTransaction *> *queuedTransactions = [[EarlyTransactionObserver shared] getQueuedTransactions];
+        if (queuedTransactions.count > 0) {
+            qDebug() << "Processing" << queuedTransactions.count << "queued transactions from early observer";
+            [self paymentQueue:[SKPaymentQueue defaultQueue] updatedTransactions:queuedTransactions];
+        }
+        [[EarlyTransactionObserver shared] clearQueuedTransactions];
     }
     return self;
 }
@@ -146,10 +202,17 @@ AppleAppStoreBackend::~AppleAppStoreBackend()
         s_currentInstance = nullptr;
 }
 
+void AppleAppStoreBackend::initializeEarly()
+{
+    qDebug() << "iOS IAP: Adding early transaction observer to catch transactions at app startup";
+    [[SKPaymentQueue defaultQueue] addTransactionObserver:[EarlyTransactionObserver shared]];
+}
+
 void AppleAppStoreBackend::startConnection()
 {
     _iapManager = [[InAppPurchaseManager alloc] init];
     setConnected(_iapManager != nullptr);
+    setCanMakePurchases(canMakePurchases());
 }
 
 void AppleAppStoreBackend::registerProduct(AbstractProduct * product)
@@ -169,6 +232,11 @@ void AppleAppStoreBackend::consumePurchase(AbstractTransaction * transaction)
 {
     [[SKPaymentQueue defaultQueue] finishTransaction:reinterpret_cast<AppleAppStoreTransaction *>(transaction)->nativeTransaction()];
     emit consumePurchaseSucceeded(transaction);
+}
+
+bool AppleAppStoreBackend::canMakePurchases() const
+{
+    return [SKPaymentQueue canMakePayments];
 }
 
 AbstractStoreBackend::PurchaseError AppleAppStoreBackend::mapStoreKitErrorToPurchaseError(int errorCode)

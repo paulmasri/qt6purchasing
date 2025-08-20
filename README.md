@@ -192,6 +192,41 @@ The library automatically handles consumable fulfillment for Microsoft Store. Wh
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
+## iOS Early Initialization (Critical)
+
+On iOS, you **must** call the early initialization in your `main()` function before creating the QML engine:
+
+```cpp
+#include <QGuiApplication>
+#include <QQmlApplicationEngine>
+
+#ifdef Q_OS_IOS
+#include "apple/appleappstorebackend.h"
+#endif
+
+int main(int argc, char *argv[])
+{
+    QGuiApplication app(argc, argv);
+    
+#ifdef Q_OS_IOS
+    // Critical: Initialize iOS IAP observer before QML engine creation
+    AppleAppStoreBackend::initializeEarly();
+#endif
+    
+    QQmlApplicationEngine engine;
+    engine.loadFromModule("YourModule", "Main");
+    return app.exec();
+}
+```
+
+**Why this is required:**
+- Apple requires transaction observers to be added at app launch in `application(_:didFinishLaunchingWithOptions:)`
+- Qt/QML creates the Store component later during QML instantiation
+- Without early initialization, transactions that occur during app startup can be lost
+- The early observer queues transactions until the full backend is ready
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
 
 
 <!-- USAGE EXAMPLES -->

@@ -18,6 +18,9 @@ public:
     void registerProduct(AbstractProduct * product) override;
     void purchaseProduct(AbstractProduct * product) override;
     void consumePurchase(AbstractTransaction * transaction) override;
+    bool canMakePurchases() const override;
+
+    static void initializeEarly();
 
     static AppleAppStoreBackend * s_currentInstance;
 
