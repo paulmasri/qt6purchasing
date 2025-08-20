@@ -25,8 +25,6 @@ public:
     static AppleAppStoreBackend * s_currentInstance;
 
 private:
-    static PurchaseError mapStoreKitErrorToPurchaseError(int errorCode);
-    static QString getStoreKitErrorMessage(int errorCode);
     
     InAppPurchaseManager * _iapManager = nullptr;
 
