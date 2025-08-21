@@ -360,13 +360,25 @@ void MicrosoftStoreBackend::onRestoreComplete(const QList<QVariantMap> &restored
     qDebug() << "Restore complete, found" << restoredProducts.size() << "owned products";
     
     for (const auto& productData : restoredProducts) {
-        QString productId = productData["productId"].toString();
-        QString orderId = QString("ms_restored_%1").arg(productId);
+        QString msStoreId = productData["productId"].toString();
+        QString orderId = QString("ms_restored_%1").arg(msStoreId);
         
-        auto transaction = new MicrosoftStoreTransaction(orderId, productId, this);
-        emit purchaseRestored(transaction);
+        // Find the Qt identifier by searching registered products
+        QString qtIdentifier;
+        for (AbstractProduct* product : products()) {
+            if (product->microsoftStoreId() == msStoreId) {
+                qtIdentifier = product->identifier();
+                break;
+            }
+        }
         
-        qDebug() << "Restored purchase:" << productId;
+        if (!qtIdentifier.isEmpty()) {
+            auto transaction = new MicrosoftStoreTransaction(orderId, qtIdentifier, this);
+            emit purchaseRestored(transaction);
+            qDebug() << "Restored purchase: MS Store ID" << msStoreId << "-> Qt ID" << qtIdentifier;
+        } else {
+            qWarning() << "Could not find Qt product for Microsoft Store ID:" << msStoreId;
+        }
     }
 }
 
