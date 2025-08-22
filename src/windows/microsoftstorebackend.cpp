@@ -83,7 +83,7 @@ void MicrosoftStoreBackend::queryAllProducts()
     
     worker->moveToThread(thread);
     connect(thread, &QThread::started, worker, &StoreAllProductsWorker::performQuery);
-    connect(worker, &StoreAllProductsWorker::queryComplete, this, &MicrosoftStoreBackend::onAllProductsQueried);
+    connect(worker, &StoreAllProductsWorker::queryComplete, this, &MicrosoftStoreBackend::onAllProductsQueried, Qt::QueuedConnection);
     connect(worker, &StoreAllProductsWorker::finished, thread, &QThread::quit);
     connect(thread, &QThread::finished, thread, &QThread::deleteLater);
     connect(worker, &StoreAllProductsWorker::finished, worker, &StoreAllProductsWorker::deleteLater);
@@ -136,7 +136,7 @@ void MicrosoftStoreBackend::registerProduct(AbstractProduct * product)
     connect(worker, &StoreProductQueryWorker::queryComplete, 
             [this, product](bool success, const QVariantMap& productData) {
                 this->onProductQueried(product, success, productData);
-            });
+            }, Qt::QueuedConnection);
     connect(worker, &StoreProductQueryWorker::finished, thread, &QThread::quit);
     connect(thread, &QThread::finished, thread, &QThread::deleteLater);
     connect(worker, &StoreProductQueryWorker::finished, worker, &StoreProductQueryWorker::deleteLater);
@@ -231,7 +231,7 @@ void MicrosoftStoreBackend::purchaseProduct(AbstractProduct * product)
     connect(worker, &StorePurchaseWorker::purchaseComplete, 
             [this, product](StorePurchaseStatus status) {
                 this->onPurchaseComplete(product, status);
-            });
+            }, Qt::QueuedConnection);
     connect(worker, &StorePurchaseWorker::finished, thread, &QThread::quit);
     connect(thread, &QThread::finished, thread, &QThread::deleteLater);
     connect(worker, &StorePurchaseWorker::finished, worker, &StorePurchaseWorker::deleteLater);
@@ -326,7 +326,7 @@ void MicrosoftStoreBackend::consumePurchase(AbstractTransaction * transaction)
                 
                 // Safe cleanup now that signals are emitted
                 transaction->destroy();
-            });
+            }, Qt::QueuedConnection);
     connect(worker, &StoreConsumableFulfillmentWorker::finished, thread, &QThread::quit);
     connect(thread, &QThread::finished, thread, &QThread::deleteLater);
     connect(worker, &StoreConsumableFulfillmentWorker::finished, worker, &StoreConsumableFulfillmentWorker::deleteLater);
@@ -353,7 +353,7 @@ void MicrosoftStoreBackend::restorePurchases()
     
     worker->moveToThread(thread);
     connect(thread, &QThread::started, worker, &StoreRestoreWorker::performRestore);
-    connect(worker, &StoreRestoreWorker::restoreComplete, this, &MicrosoftStoreBackend::onRestoreComplete);
+    connect(worker, &StoreRestoreWorker::restoreComplete, this, &MicrosoftStoreBackend::onRestoreComplete, Qt::QueuedConnection);
     connect(worker, &StoreRestoreWorker::finished, thread, &QThread::quit);
     connect(thread, &QThread::finished, thread, &QThread::deleteLater);
     connect(worker, &StoreRestoreWorker::finished, worker, &StoreRestoreWorker::deleteLater);
