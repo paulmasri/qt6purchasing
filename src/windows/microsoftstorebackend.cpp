@@ -68,8 +68,7 @@ void MicrosoftStoreBackend::startConnection()
     // Query all products on startup
     queryAllProducts();
     
-    // Automatically restore existing purchases on startup
-    restorePurchases();
+    // Note: restorePurchases() will be called after products are queried
 }
 
 void MicrosoftStoreBackend::queryAllProducts()
@@ -99,6 +98,10 @@ void MicrosoftStoreBackend::onAllProductsQueried(const QList<QVariantMap> &produ
         qDebug() << "Available product:" << product["productId"].toString()
                  << "Title:" << product["title"].toString();
     }
+    
+    // Now that products are available, restore existing purchases
+    qDebug() << "Products queried, now calling restorePurchases()";
+    restorePurchases();
 }
 
 void MicrosoftStoreBackend::registerProduct(AbstractProduct * product)
