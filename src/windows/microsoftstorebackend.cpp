@@ -238,6 +238,7 @@ void MicrosoftStoreBackend::purchaseProduct(AbstractProduct * product)
 
 void MicrosoftStoreBackend::onPurchaseComplete(AbstractProduct* product, StorePurchaseStatus status)
 {
+    qDebug() << "onPurchaseComplete: Backend thread:" << this->thread() << "Current thread:" << QThread::currentThread();
     if (status == StorePurchaseStatus::Succeeded) {
         // Create minimal transaction for success
         QString orderId = QString("ms_%1_%2").arg(product->identifier()).arg(QDateTime::currentMSecsSinceEpoch());
@@ -332,6 +333,8 @@ void MicrosoftStoreBackend::consumePurchase(AbstractTransaction * transaction)
 
 void MicrosoftStoreBackend::restorePurchases()
 {
+    qDebug() << "restorePurchases() called, products count:" << products().size();
+    
     if (!isConnected()) {
         qWarning() << "Cannot restore purchases - store not connected";
         return;
@@ -357,6 +360,7 @@ void MicrosoftStoreBackend::restorePurchases()
 
 void MicrosoftStoreBackend::onRestoreComplete(const QList<QVariantMap> &restoredProducts)
 {
+    qDebug() << "onRestoreComplete: Backend thread:" << this->thread() << "Current thread:" << QThread::currentThread();
     qDebug() << "Restore complete, found" << restoredProducts.size() << "owned products";
     
     for (const auto& productData : restoredProducts) {
