@@ -79,7 +79,7 @@ void MicrosoftStoreBackend::queryAllProducts()
     }
     
     auto* worker = new StoreAllProductsWorker(_hwnd);
-    auto* thread = new QThread(nullptr);
+    auto* thread = new QThread(this);
     
     worker->moveToThread(thread);
     connect(thread, &QThread::started, worker, &StoreAllProductsWorker::performQuery);
@@ -129,7 +129,7 @@ void MicrosoftStoreBackend::registerProduct(AbstractProduct * product)
 #endif
     
     auto* worker = new StoreProductQueryWorker(productId, _hwnd);
-    auto* thread = new QThread(nullptr);
+    auto* thread = new QThread(this);
     
     worker->moveToThread(thread);
     connect(thread, &QThread::started, worker, &StoreProductQueryWorker::performQuery);
@@ -224,7 +224,7 @@ void MicrosoftStoreBackend::purchaseProduct(AbstractProduct * product)
 #endif
     
     auto* worker = new StorePurchaseWorker(productId, _hwnd);
-    auto* thread = new QThread(nullptr);
+    auto* thread = new QThread(this);
     
     worker->moveToThread(thread);
     connect(thread, &QThread::started, worker, &StorePurchaseWorker::performPurchase);
@@ -303,7 +303,7 @@ void MicrosoftStoreBackend::consumePurchase(AbstractTransaction * transaction)
     
     // Create fulfillment worker
     auto* worker = new StoreConsumableFulfillmentWorker(storeId, 1, _hwnd); // quantity = 1
-    auto* thread = new QThread(nullptr);
+    auto* thread = new QThread(this);
     
     worker->moveToThread(thread);
     connect(thread, &QThread::started, worker, &StoreConsumableFulfillmentWorker::performFulfillment);
@@ -349,7 +349,7 @@ void MicrosoftStoreBackend::restorePurchases()
     }
     
     auto* worker = new StoreRestoreWorker(_hwnd);
-    auto* thread = new QThread(nullptr);
+    auto* thread = new QThread(this);
     
     worker->moveToThread(thread);
     connect(thread, &QThread::started, worker, &StoreRestoreWorker::performRestore);
