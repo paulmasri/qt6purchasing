@@ -319,6 +319,106 @@ int main(int argc, char *argv[])
    - Platform backends handle the finalization appropriately for each product type
 
 
+## Edge Cases and Platform-Specific Behaviors
+
+Understanding these scenarios is critical for robust production deployment:
+
+### 1. Pending/Deferred Purchases (Ask to Buy)
+**What happens**: Purchase requires external approval (parental consent, payment verification).
+
+**Platform notes**:
+- **iOS**: `SKPaymentTransactionStateDeferred` triggers pending state for Ask to Buy scenarios.
+- **Android**: Family-managed accounts with purchase approval requirements trigger pending state.
+- **Windows**: Microsoft family accounts with purchase restrictions cause deferred purchases.
+
+**Library behaviour**: Automatically detects deferred transactions and emits `purchasePending` signal. The platform keeps the transaction in queue awaiting approval.
+
+**Developer action**: Handle `onPurchasePending` to update UI showing "awaiting approval" state. Do not grant content. Wait for final `onPurchaseSucceeded` or `onPurchaseFailed` callback.
+
+### 2. Network Interruption During Purchase
+**What happens**: Purchase starts but network fails mid-transaction.
+
+**Platform notes**:
+- **iOS**: Transaction may remain in `SKPaymentTransactionStatePurchasing` indefinitely until network recovers.
+- **Android**: Returns `BillingResponseCode.SERVICE_UNAVAILABLE` or similar network errors.
+- **Windows**: Store API calls timeout and purchase dialog may remain open.
+
+**Library behaviour**: Maps platform-specific network errors to `PurchaseError` enum values. Transactions may remain in purchasing state until network recovers.
+
+**Developer action**: Handle `onPurchaseFailed` with network-related errors gracefully. Allow retry attempts. Never grant content without confirmed `onPurchaseSucceeded`.
+
+### 3. App Crashes During Transaction Processing
+**What happens**: Transaction completes on platform side but app crashes before calling `transaction.finalize()`.
+
+**Platform notes**:
+- **iOS**: Unfinished transactions remain in `SKPaymentQueue` and are redelivered on app launch.
+- **Android**: Unacknowledged purchases remain available via `queryPurchases()` on startup.
+- **Windows**: Unfulfilled consumables remain in purchase history until consumed.
+
+**Library behaviour**: Automatically detects unfinished transactions on next app launch. Delivers them via `purchaseRestored` signal during startup. Maintains transaction queue integrity across app sessions.
+
+**Developer action**: Always handle `onPurchaseRestored` the same way as `onPurchaseSucceeded`. Call `transaction.finalize()` in both handlers. Implement idempotent content delivery - check if user already has the purchased item before granting it again.
+
+### 4. Consumable Purchase Without Consumption
+**What happens**: Purchase succeeds but `transaction.finalize()` is never called (due to app crashes, network issues, or code bugs).
+
+**Platform notes**:
+- **iOS**: Blocks future purchases of same consumable with "already owned" error until consumed.
+- **Android**: Similar blocking behavior - consumable marked as owned until acknowledged.
+- **Windows**: Consumable fulfillment not reported to Store, may prevent repurchase.
+
+**Library behaviour**: Preserves transaction data and platform purchase state. On next app launch, unfinalized consumables are delivered via the purchase restore process (see scenario 3 above). The library treats restored consumables the same as any other restored purchase.
+
+**Developer action**: **ALWAYS** call `transaction.finalize()` in both `onPurchaseSucceeded` AND `onPurchaseRestored` handlers for consumables. This ensures consumables are finalized even if the app crashed after purchase. Implement consumption tracking to ensure no consumables are left unfinalized.
+
+### 5. Promotional/Offer Code Redemption
+**What happens**: User redeems offer code directly from platform store, bypassing your app's purchase flow.
+
+**Platform notes**:
+- **iOS**: App Store promotional codes trigger transaction observer without app-initiated purchase.
+- **Android**: Play Store promotional codes and Play Pass redemptions trigger purchase callbacks.
+- **Windows**: Microsoft Store promotional codes trigger purchase notifications.
+
+**Library behaviour**: Delivers promotional purchases through normal `purchaseSucceeded` signal flow. No special handling required from library perspective.
+
+**Developer action**: Handle unexpected `onPurchaseSucceeded` calls that weren't initiated by your app's UI. Don't assume all purchases originate from user tapping your purchase buttons.
+
+### 6. Platform Store Maintenance/Downtime
+**What happens**: Platform store services are temporarily unavailable.
+
+**Platform notes**:
+- **iOS**: App Store downtime typically causes `NetworkError` or `UnknownError` rather than specific service unavailable errors.
+- **Android**: Google Play Billing service interruptions mapped to `ServiceUnavailable` for billing disconnections.
+- **Windows**: Microsoft Store maintenance periods mapped to `ServiceUnavailable` for server errors and store disconnections.
+
+**Library behaviour**: Maps platform service errors to appropriate `PurchaseError` values. Maintains app stability during store outages.
+
+**Developer action**: Handle `onPurchaseFailed` with service-related errors gracefully. Show user-friendly "store temporarily unavailable" messages. Implement retry mechanisms with reasonable delays.
+
+### 7. Restore Purchase Edge Cases
+**What happens**: Restore purchases doesn't return all expected results due to account or platform limitations.
+
+**Platform notes**:
+- **iOS**: Cross-device restore requires same Apple ID and account mismatches prevent some restores.
+- **Android**: Restore works via Google account and purchase history is tied to specific Google account.
+- **Windows**: Microsoft account-based restore with purchases tied to specific Microsoft account and device family.
+
+**Library behaviour**: Calls platform restore APIs and delivers all available restored purchases via `purchaseRestored` signals. Logs warnings for purchases that cannot be mapped to registered products.
+
+**Developer action**: Handle partial restore scenarios gracefully. Inform users about account requirements for restore (same Apple ID, Google account, Microsoft account). Don't assume restore will return all historical purchases.
+
+### 8. Development vs Production Environment Differences
+**What happens**: Different behavior between testing and production deployments.
+
+**Platform notes**:
+- **iOS**: Sandbox environment doesn't support Ask to Buy testing and receipt validation differs from production.
+- **Android**: Testing tracks have different validation requirements and purchase flows than production.
+- **Windows**: Debug/development apps have different Store integration behavior than published apps.
+
+**Library behaviour**: Works in both sandbox/testing and production environments. Provides same API surface across environments.
+
+**Developer action**: Test thoroughly in production environment before release. Document sandbox limitations for your QA team. Be aware that some features (like iOS Ask to Buy) cannot be tested in sandbox environments.
+
 ## Thread Safety
 
 **Important**: Store backends must be created and destroyed on the main thread. The library uses static instances internally for routing platform callbacks, which requires main-thread access for thread safety.
