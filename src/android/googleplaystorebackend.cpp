@@ -154,6 +154,12 @@ void GooglePlayStoreBackend::consumePurchase(AbstractTransaction * transaction)
     );
 }
 
+void GooglePlayStoreBackend::restorePurchases()
+{
+    qDebug() << "Android restorePurchases() called - triggering manual queryPurchasesAsync";
+    _googlePlayBillingJavaClass->callMethod<void>("queryExistingPurchases");
+}
+
 bool GooglePlayStoreBackend::canMakePurchases() const
 {
     // For Android, we can make purchases if we're connected to the billing service

@@ -280,6 +280,12 @@ void AppleAppStoreBackend::consumePurchase(AbstractTransaction * transaction)
     emit consumePurchaseSucceeded(transaction);
 }
 
+void AppleAppStoreBackend::restorePurchases()
+{
+    qDebug() << "iOS restorePurchases() called - triggering SKPaymentQueue.restoreCompletedTransactions";
+    [[SKPaymentQueue defaultQueue] restoreCompletedTransactions];
+}
+
 bool AppleAppStoreBackend::canMakePurchases() const
 {
     return [SKPaymentQueue canMakePayments];

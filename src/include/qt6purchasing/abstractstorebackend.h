@@ -51,6 +51,8 @@ public:
     virtual void purchaseProduct(AbstractProduct * product) = 0;
     virtual void consumePurchase(AbstractTransaction * transaction) = 0;
 
+    Q_INVOKABLE virtual void restorePurchases() = 0;
+
 protected:
     explicit AbstractStoreBackend(QObject * parent = nullptr);
     QList<AbstractProduct *> _products;

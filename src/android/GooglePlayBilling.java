@@ -169,4 +169,9 @@ public class GooglePlayBilling {
             throw new RuntimeException(e);
         }
     }
+
+    public void queryExistingPurchases() {
+        debugMessage("Manual restore purchases triggered - calling queryPurchasesAsync");
+        billingClient.queryPurchasesAsync(SkuType.INAPP, purchasesResponseListener);
+    }
 }
