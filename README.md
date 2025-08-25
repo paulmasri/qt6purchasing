@@ -313,6 +313,10 @@ int main(int argc, char *argv[])
       }
   }
   ```
+4. **Important**: Call `transaction.finalize()` in **both** `onPurchaseSucceeded` and `onPurchaseRestored` handlers. This ensures:
+   - **Consumables** are properly consumed and can be repurchased
+   - **Durables/Unlockables** complete their transaction acknowledgment
+   - Platform backends handle the finalization appropriately for each product type
 
 
 ## Thread Safety
