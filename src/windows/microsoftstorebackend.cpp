@@ -133,7 +133,7 @@ void MicrosoftStoreBackend::registerProduct(AbstractProduct * product)
     
     worker->moveToThread(thread);
     connect(thread, &QThread::started, worker, &StoreProductQueryWorker::performQuery);
-    connect(worker, &StoreProductQueryWorker::queryComplete, 
+    connect(worker, &StoreProductQueryWorker::queryComplete, this,
             [this, product](bool success, const QVariantMap& productData) {
                 this->onProductQueried(product, success, productData);
             }, Qt::QueuedConnection);
@@ -228,7 +228,7 @@ void MicrosoftStoreBackend::purchaseProduct(AbstractProduct * product)
     
     worker->moveToThread(thread);
     connect(thread, &QThread::started, worker, &StorePurchaseWorker::performPurchase);
-    connect(worker, &StorePurchaseWorker::purchaseComplete, 
+    connect(worker, &StorePurchaseWorker::purchaseComplete, this,
             [this, product](StorePurchaseStatus status) {
                 this->onPurchaseComplete(product, status);
             }, Qt::QueuedConnection);
@@ -313,7 +313,7 @@ void MicrosoftStoreBackend::consumePurchase(AbstractTransaction * transaction)
     // Capture transaction data by value for logging
     QString orderId = transaction->orderId();
     QString productId = transaction->productId();
-    connect(worker, &StoreConsumableFulfillmentWorker::fulfillmentComplete, 
+    connect(worker, &StoreConsumableFulfillmentWorker::fulfillmentComplete, this,
             [this, transaction, orderId, productId](bool success, const QString& result) {
                 this->onConsumableFulfillmentComplete(orderId, productId, success, result);
                 
