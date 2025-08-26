@@ -18,12 +18,14 @@ public:
     void registerProduct(AbstractProduct * product) override;
     void purchaseProduct(AbstractProduct * product) override;
     void consumePurchase(AbstractTransaction * transaction) override;
+    void restorePurchases() override;
+    bool canMakePurchases() const override;
+
+    static void initializeEarly();
 
     static AppleAppStoreBackend * s_currentInstance;
 
 private:
-    static PurchaseError mapStoreKitErrorToPurchaseError(int errorCode);
-    static QString getStoreKitErrorMessage(int errorCode);
     
     InAppPurchaseManager * _iapManager = nullptr;
 

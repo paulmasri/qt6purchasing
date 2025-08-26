@@ -25,6 +25,7 @@ GooglePlayStoreBackend::GooglePlayStoreBackend(QObject * parent) : AbstractStore
         {"connectedChangedHelper", "(Z)V", reinterpret_cast<void *>(connectedChangedHelper)},
         {"productRegistered", "(Ljava/lang/String;)V", reinterpret_cast<void *>(productRegistered)},
         {"purchaseSucceeded", "(Ljava/lang/String;)V", reinterpret_cast<void *>(purchaseSucceeded)},
+        {"purchasePending", "(Ljava/lang/String;)V", reinterpret_cast<void *>(purchasePending)},
         {"purchaseRestored", "(Ljava/lang/String;)V", reinterpret_cast<void *>(purchaseRestored)},
         {"purchaseFailed", "(Ljava/lang/String;I)V", reinterpret_cast<void *>(purchaseFailed)},
         {"purchaseConsumed", "(Ljava/lang/String;)V", reinterpret_cast<void *>(purchaseConsumed)},
@@ -70,6 +71,7 @@ GooglePlayStoreBackend::~GooglePlayStoreBackend()
         return;
     }
     backend->setConnected(connected);
+    backend->setCanMakePurchases(backend->canMakePurchases());
 }
 
 void GooglePlayStoreBackend::startConnection()
@@ -152,6 +154,18 @@ void GooglePlayStoreBackend::consumePurchase(AbstractTransaction * transaction)
     );
 }
 
+void GooglePlayStoreBackend::restorePurchases()
+{
+    qDebug() << "Android restorePurchases() called - triggering manual queryPurchasesAsync";
+    _googlePlayBillingJavaClass->callMethod<void>("queryExistingPurchases");
+}
+
+bool GooglePlayStoreBackend::canMakePurchases() const
+{
+    // For Android, we can make purchases if we're connected to the billing service
+    return isConnected();
+}
+
 /*static*/ void GooglePlayStoreBackend::purchaseSucceeded(JNIEnv *env, jobject object, jstring message)
 {
     GooglePlayStoreBackend* backend = GooglePlayStoreBackend::s_currentInstance;
@@ -166,6 +180,36 @@ void GooglePlayStoreBackend::consumePurchase(AbstractTransaction * transaction)
 
     GooglePlayStoreTransaction * transaction = new GooglePlayStoreTransaction(json, backend);
     emit backend->purchaseSucceeded(transaction);
+}
+
+/*static*/ void GooglePlayStoreBackend::purchasePending(JNIEnv *env, jobject object, jstring message)
+{
+    GooglePlayStoreBackend* backend = GooglePlayStoreBackend::s_currentInstance;
+    if (!backend) {
+        qCritical() << "Google Play pending purchase callback received but backend instance is null";
+        return;
+    }
+
+    const char* jsonCStr = env->GetStringUTFChars(message, nullptr);
+    QJsonObject json = QJsonDocument::fromJson(jsonCStr).object();
+    env->ReleaseStringUTFChars(message, jsonCStr);
+
+    qDebug() << "Android purchase pending for product:" << json.value("productId").toString();
+    
+    // For pending purchases, we need to create a transaction but not grant content yet
+    // The purchase will transition to PURCHASED later and we'll get purchaseSucceeded callback
+    GooglePlayStoreTransaction * transaction = new GooglePlayStoreTransaction(json, backend);
+    
+    // Find the product and emit a pending signal
+    QString productId = json.value("productId").toString();
+    AbstractProduct * product = backend->product(productId);
+    if (product) {
+        qDebug() << "Emitting purchase pending for product:" << productId;
+        emit backend->purchasePending(transaction);
+    } else {
+        qWarning() << "Could not find product for pending purchase:" << productId;
+        transaction->deleteLater();
+    }
 }
 
 /*static*/ void GooglePlayStoreBackend::purchaseRestored(JNIEnv *env, jobject object, jstring message)

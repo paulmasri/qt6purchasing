@@ -21,7 +21,8 @@ public:
     void registerProduct(AbstractProduct * product) override;
     void purchaseProduct(AbstractProduct * product) override;
     void consumePurchase(AbstractTransaction * transaction) override;
-    void restorePurchases();
+    void restorePurchases() override;
+    bool canMakePurchases() const override;
 
     static MicrosoftStoreBackend * s_currentInstance;
 

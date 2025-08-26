@@ -42,6 +42,24 @@ AbstractStoreBackend::AbstractStoreBackend(QObject * parent) : QObject(parent)
         });
     });
 
+    connect(this, &AbstractStoreBackend::purchasePending, this, [this](AbstractTransaction * transaction){
+        qDebug() << "purchasePending:" << transaction->orderId();
+
+        AbstractProduct * ap = product(transaction->productId());
+        if (ap) {
+            emit ap->purchasePending(transaction);
+        } else {
+            qCritical() << "Failed to map pending purchase to a product!";
+        }
+
+        // Auto-cleanup unless retained
+        QTimer::singleShot(0, this, [transaction]() {
+            if (!transaction->isRetained()) {
+                transaction->deleteLater();
+            }
+        });
+    });
+
     connect(this, &AbstractStoreBackend::purchaseRestored, this, [this](AbstractTransaction * transaction){
         qDebug() << "purchaseRestored:" << transaction->orderId();
 
@@ -138,6 +156,16 @@ void AbstractStoreBackend::setConnected(bool connected)
     _connected = connected;
     emit connectedChanged();
     qDebug() << "Store connection status changed to" << (_connected ? "connected" : "disconnected");
+}
+
+void AbstractStoreBackend::setCanMakePurchases(bool canMakePurchases)
+{
+    if (_canMakePurchases == canMakePurchases)
+        return;
+
+    _canMakePurchases = canMakePurchases;
+    emit canMakePurchasesChanged();
+    qDebug() << "Store canMakePurchases status changed to" << (_canMakePurchases ? "enabled" : "disabled");
 }
 
 // Static QQmlListProperty accessors

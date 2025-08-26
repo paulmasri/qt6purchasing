@@ -73,7 +73,6 @@ void AbstractProduct::setStatus(ProductStatus status)
     emit statusChanged();
 }
 
-#ifdef Q_OS_WIN
 void AbstractProduct::setMicrosoftStoreId(const QString &value)
 {
     if (_microsoftStoreId == value)
@@ -82,7 +81,6 @@ void AbstractProduct::setMicrosoftStoreId(const QString &value)
     _microsoftStoreId = value;
     emit microsoftStoreIdChanged();
 }
-#endif
 
 void AbstractProduct::registerInStore()
 {
