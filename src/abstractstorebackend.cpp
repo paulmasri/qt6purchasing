@@ -1,6 +1,5 @@
 #include <qt6purchasing/abstractstorebackend.h>
 #include <qt6purchasing/abstractproduct.h>
-#include <qt6purchasing/abstracttransaction.h>
 
 #include <QTimer>
 
@@ -24,7 +23,7 @@ AbstractStoreBackend::AbstractStoreBackend(QObject * parent) : QObject(parent)
         qDebug() << "Product registered:" << product->identifier();
     });
 
-    connect(this, &AbstractStoreBackend::purchaseSucceeded, this, [this](AbstractTransaction * transaction){
+    connect(this, &AbstractStoreBackend::purchaseSucceeded, this, [this](QSharedPointer<Transaction> transaction){
         qDebug() << "purchaseSucceeded:" << transaction->orderId();
 
         AbstractProduct * ap = product(transaction->productId());
@@ -33,16 +32,9 @@ AbstractStoreBackend::AbstractStoreBackend(QObject * parent) : QObject(parent)
         } else {
             qCritical() << "Failed to map successful purchase to a product!";
         }
-
-        // Auto-cleanup unless retained
-        QTimer::singleShot(0, this, [transaction]() {
-            if (!transaction->isRetained()) {
-                transaction->deleteLater();
-            }
-        });
     });
 
-    connect(this, &AbstractStoreBackend::purchasePending, this, [this](AbstractTransaction * transaction){
+    connect(this, &AbstractStoreBackend::purchasePending, this, [this](QSharedPointer<Transaction> transaction){
         qDebug() << "purchasePending:" << transaction->orderId();
 
         AbstractProduct * ap = product(transaction->productId());
@@ -51,16 +43,9 @@ AbstractStoreBackend::AbstractStoreBackend(QObject * parent) : QObject(parent)
         } else {
             qCritical() << "Failed to map pending purchase to a product!";
         }
-
-        // Auto-cleanup unless retained
-        QTimer::singleShot(0, this, [transaction]() {
-            if (!transaction->isRetained()) {
-                transaction->deleteLater();
-            }
-        });
     });
 
-    connect(this, &AbstractStoreBackend::purchaseRestored, this, [this](AbstractTransaction * transaction){
+    connect(this, &AbstractStoreBackend::purchaseRestored, this, [this](QSharedPointer<Transaction> transaction){
         qDebug() << "purchaseRestored:" << transaction->orderId();
 
         AbstractProduct * ap = product(transaction->productId());
@@ -69,13 +54,6 @@ AbstractStoreBackend::AbstractStoreBackend(QObject * parent) : QObject(parent)
         } else {
             qCritical() << "Failed to map restored purchase to a product!";
         }
-
-        // Auto-cleanup unless retained
-        QTimer::singleShot(0, this, [transaction]() {
-            if (!transaction->isRetained()) {
-                transaction->deleteLater();
-            }
-        });
     });
 
     connect(this, &AbstractStoreBackend::purchaseFailed, this,
@@ -93,7 +71,7 @@ AbstractStoreBackend::AbstractStoreBackend(QObject * parent) : QObject(parent)
         }
     });
 
-    connect(this, &AbstractStoreBackend::consumePurchaseSucceeded, this, [this](AbstractTransaction * transaction){
+    connect(this, &AbstractStoreBackend::consumePurchaseSucceeded, this, [this](QSharedPointer<Transaction> transaction){
         qDebug() << "consumePurchaseSucceeded:" << transaction->orderId();
 
         AbstractProduct * ap = product(transaction->productId());
@@ -102,16 +80,9 @@ AbstractStoreBackend::AbstractStoreBackend(QObject * parent) : QObject(parent)
         } else {
             qCritical() << "Failed to map consumed purchase to a product!";
         }
-
-        // Auto-cleanup unless retained
-        QTimer::singleShot(0, this, [transaction]() {
-            if (!transaction->isRetained()) {
-                transaction->deleteLater();
-            }
-        });
     });
 
-    connect(this, &AbstractStoreBackend::consumePurchaseFailed, this, [this](AbstractTransaction * transaction){
+    connect(this, &AbstractStoreBackend::consumePurchaseFailed, this, [this](QSharedPointer<Transaction> transaction){
         qDebug() << "consumePurchaseFailed:" << transaction->orderId();
 
         AbstractProduct * ap = product(transaction->productId());
@@ -120,13 +91,6 @@ AbstractStoreBackend::AbstractStoreBackend(QObject * parent) : QObject(parent)
         } else {
             qCritical() << "Failed to map failed consumption to a product!";
         }
-
-        // Auto-cleanup unless retained
-        QTimer::singleShot(0, this, [transaction]() {
-            if (!transaction->isRetained()) {
-                transaction->deleteLater();
-            }
-        });
     });
 }
 
@@ -168,10 +132,16 @@ void AbstractStoreBackend::setCanMakePurchases(bool canMakePurchases)
     qDebug() << "Store canMakePurchases status changed to" << (_canMakePurchases ? "enabled" : "disabled");
 }
 
+void AbstractStoreBackend::finalize(QSharedPointer<Transaction> transaction)
+{
+    qDebug() << "Store: Finalizing transaction" << transaction->orderId();
+    consumePurchase(transaction);
+}
+
 // Static QQmlListProperty accessors
 void AbstractStoreBackend::appendProduct(QQmlListProperty<AbstractProduct> *list, AbstractProduct *product)
 {
-    AbstractStoreBackend *store = qobject_cast<AbstractStoreBackend*>(list->object);
+    AbstractStoreBackend * store = qobject_cast<AbstractStoreBackend *>(list->object);
     if (store && product) {
         store->_products.append(product);
         emit store->productsChanged();
@@ -180,19 +150,19 @@ void AbstractStoreBackend::appendProduct(QQmlListProperty<AbstractProduct> *list
 
 qsizetype AbstractStoreBackend::productCount(QQmlListProperty<AbstractProduct> *list)
 {
-    AbstractStoreBackend *store = qobject_cast<AbstractStoreBackend*>(list->object);
+    AbstractStoreBackend * store = qobject_cast<AbstractStoreBackend *>(list->object);
     return store ? store->_products.count() : 0;
 }
 
 AbstractProduct *AbstractStoreBackend::productAt(QQmlListProperty<AbstractProduct> *list, qsizetype index)
 {
-    AbstractStoreBackend *store = qobject_cast<AbstractStoreBackend*>(list->object);
+    AbstractStoreBackend * store = qobject_cast<AbstractStoreBackend *>(list->object);
     return (store && index >= 0 && index < store->_products.count()) ? store->_products.at(index) : nullptr;
 }
 
 void AbstractStoreBackend::clearProducts(QQmlListProperty<AbstractProduct> *list)
 {
-    AbstractStoreBackend *store = qobject_cast<AbstractStoreBackend*>(list->object);
+    AbstractStoreBackend * store = qobject_cast<AbstractStoreBackend *>(list->object);
     if (store) {
         store->_products.clear();
         emit store->productsChanged();

@@ -1,10 +1,7 @@
 #include "googleplaystoretransaction.h"
 
-GooglePlayStoreTransaction::GooglePlayStoreTransaction(QJsonObject json, QObject * parent) : AbstractTransaction(json["orderId"].toString(), parent),
-    _json(json)
-{}
-
-QString GooglePlayStoreTransaction::productId() const
+GooglePlayStoreTransaction::GooglePlayStoreTransaction(const QString & orderId, const QString & productId, 
+                                                       const QString & purchaseToken, QObject * parent)
+    : Transaction(orderId, productId, parent), _purchaseToken(purchaseToken)
 {
-    return _json["productId"].toString();
 }

@@ -1,30 +1,20 @@
 #ifndef APPLEAPPSTORETRANSACTION_H
 #define APPLEAPPSTORETRANSACTION_H
 
-#include <qt6purchasing/abstracttransaction.h>
+#include <qt6purchasing/transaction.h>
 
 Q_FORWARD_DECLARE_OBJC_CLASS(SKPaymentTransaction);
 
-class AppleAppStoreTransaction : public AbstractTransaction
+class AppleAppStoreTransaction : public Transaction
 {
     Q_OBJECT
-    QML_NAMED_ELEMENT(Transaction)
-    QML_UNCREATABLE("Transactions are created by the store backend")
-
+    
 public:
-    enum AppleAppStoreTransactionState {
-        Purchasing,
-        Purchased,
-        Failed,
-        Restored,
-        Deferred
-    };
-    Q_ENUM(AppleAppStoreTransactionState)
-    AppleAppStoreTransaction(SKPaymentTransaction * transaction, QObject * parent = nullptr);
-
-    QString productId() const override;
-    SKPaymentTransaction * nativeTransaction() { return _nativeTransaction; }
-
+    explicit AppleAppStoreTransaction(const QString & orderId, const QString & productId,
+                                     SKPaymentTransaction * nativeTransaction, QObject * parent = nullptr);
+    
+    SKPaymentTransaction * nativeTransaction() const { return _nativeTransaction; }
+    
 private:
     SKPaymentTransaction * _nativeTransaction;
 };

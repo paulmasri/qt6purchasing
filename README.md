@@ -188,7 +188,7 @@ The `microsoftStoreId` should be the exact Store ID from your Microsoft Partner 
 
 ### Consumable Fulfillment
 
-The library automatically handles consumable fulfillment for Microsoft Store. When you call `transaction.finalize()` on a consumable purchase, the library reports fulfillment to Microsoft Store with a unique tracking ID, allowing the user to repurchase the same consumable.
+The library automatically handles consumable fulfillment for Microsoft Store. When you call `store.finalize(transaction)` on a consumable purchase, the library reports fulfillment to Microsoft Store with a unique tracking ID, allowing the user to repurchase the same consumable.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -279,7 +279,7 @@ int main(int argc, char *argv[])
 
     function finalize(transaction) {
         purchasingStatus = StoreItem.PurchasingStatus.PurchaseSuccess
-        transaction.finalize()
+        iapStore.finalize(transaction)
     }
 
     Connections {
@@ -290,30 +290,16 @@ int main(int argc, char *argv[])
         function onPurchaseRestored(transaction) {
             finalize(transaction)
         }
-        function onPurchaseFailed(transaction) {
+        function onPurchaseFailed(error, platformCode, message) {
             purchasingStatus = StoreItem.PurchasingStatus.PurchaseFail
         }
-        function onPurchaseConsumed(transaction) {
+        function onConsumePurchaseSucceeded(transaction) {
             root.iapCompleted()
         }
     }
   }
   ```
-3. **Note**: Transactions will automatically be destroyed after your handler completes. If for some reason you want to hold onto a `transaction`, call `retain()` immediately and then call `destroy()` when you're done.
-  ```qml
-  Connections {
-      target: product
-      function onPurchaseConsumed(transaction) {
-          transaction.retain() // Retain transaction while we do deferred work
-          
-          Qt.callLater(function() {
-              // Update user preferences, analytics, etc.
-              transaction.destroy()
-          })
-      }
-  }
-  ```
-4. **Important**: Call `transaction.finalize()` in **both** `onPurchaseSucceeded` and `onPurchaseRestored` handlers. This ensures:
+3. **Important**: Call `store.finalize(transaction)` in **both** `onPurchaseSucceeded` and `onPurchaseRestored` handlers. This ensures:
    - **Consumables** are properly consumed and can be repurchased
    - **Durables/Unlockables** complete their transaction acknowledgment
    - Platform backends handle the finalization appropriately for each product type
@@ -348,7 +334,7 @@ Understanding these scenarios is critical for robust production deployment:
 **Developer action**: Handle `onPurchaseFailed` with network-related errors gracefully. Allow retry attempts. Never grant content without confirmed `onPurchaseSucceeded`.
 
 ### 3. App Crashes During Transaction Processing
-**What happens**: Transaction completes on platform side but app crashes before calling `transaction.finalize()`.
+**What happens**: Transaction completes on platform side but app crashes before calling `store.finalize(transaction)`.
 
 **Platform notes**:
 - **iOS**: Unfinished transactions remain in `SKPaymentQueue` and are redelivered on app launch.
@@ -357,10 +343,10 @@ Understanding these scenarios is critical for robust production deployment:
 
 **Library behaviour**: Automatically detects unfinished transactions on next app launch. Delivers them via `purchaseRestored` signal during startup. Maintains transaction queue integrity across app sessions.
 
-**Developer action**: Always handle `onPurchaseRestored` the same way as `onPurchaseSucceeded`. Call `transaction.finalize()` in both handlers. Implement idempotent content delivery - check if user already has the purchased item before granting it again.
+**Developer action**: Always handle `onPurchaseRestored` the same way as `onPurchaseSucceeded`. Call `store.finalize(transaction)` in both handlers. Implement idempotent content delivery - check if user already has the purchased item before granting it again.
 
 ### 4. Consumable Purchase Without Consumption
-**What happens**: Purchase succeeds but `transaction.finalize()` is never called (due to app crashes, network issues, or code bugs).
+**What happens**: Purchase succeeds but `store.finalize(transaction)` is never called (due to app crashes, network issues, or code bugs).
 
 **Platform notes**:
 - **iOS**: Blocks future purchases of same consumable with "already owned" error until consumed.
@@ -369,7 +355,7 @@ Understanding these scenarios is critical for robust production deployment:
 
 **Library behaviour**: Preserves transaction data and platform purchase state. On next app launch, unfinalized consumables are delivered via the purchase restore process (see scenario 3 above). The library treats restored consumables the same as any other restored purchase.
 
-**Developer action**: **ALWAYS** call `transaction.finalize()` in both `onPurchaseSucceeded` AND `onPurchaseRestored` handlers for consumables. This ensures consumables are finalized even if the app crashed after purchase. Implement consumption tracking to ensure no consumables are left unfinalized.
+**Developer action**: **ALWAYS** call `store.finalize(transaction)` in both `onPurchaseSucceeded` AND `onPurchaseRestored` handlers for consumables. This ensures consumables are finalized even if the app crashed after purchase. Implement consumption tracking to ensure no consumables are left unfinalized.
 
 ### 5. Promotional/Offer Code Redemption
 **What happens**: User redeems offer code directly from platform store, bypassing your app's purchase flow.

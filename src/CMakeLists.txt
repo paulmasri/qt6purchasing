@@ -47,7 +47,7 @@ elseif(APPLE)
     list(APPEND PLATFORM_SOURCES
         apple/appleappstorebackend.mm
         apple/appleappstoreproduct.mm
-        apple/appleappstoretransaction.mm
+        apple/appleappstoretransaction.cpp
     )
     list(APPEND PLATFORM_HEADERS
         apple/appleappstorebackend.h
@@ -61,7 +61,6 @@ elseif(APPLE)
     set_source_files_properties(
         apple/appleappstorebackend.mm
         apple/appleappstoreproduct.mm
-        apple/appleappstoretransaction.mm
         PROPERTIES
         COMPILE_FLAGS "-fobjc-arc"
     )
@@ -73,13 +72,11 @@ elseif(WIN32)
     list(APPEND PLATFORM_SOURCES
         windows/microsoftstorebackend.cpp
         windows/microsoftstoreproduct.cpp
-        windows/microsoftstoretransaction.cpp
         windows/microsoftstoreworkers.cpp
     )
     list(APPEND PLATFORM_HEADERS
         windows/microsoftstorebackend.h
         windows/microsoftstoreproduct.h
-        windows/microsoftstoretransaction.h
         windows/microsoftstoreworkers.h
     )
 
@@ -90,12 +87,12 @@ endif()
 set(CORE_SOURCES
     abstractproduct.cpp
     abstractstorebackend.cpp
-    abstracttransaction.cpp
+    transaction.cpp
 )
 set(CORE_HEADERS
     include/qt6purchasing/abstractproduct.h
     include/qt6purchasing/abstractstorebackend.h
-    include/qt6purchasing/abstracttransaction.h
+    include/qt6purchasing/transaction.h
 )
 
 qt_add_library(qt6purchasinglib STATIC

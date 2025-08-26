@@ -1,23 +1,20 @@
 #ifndef GOOGLEPLAYSTORETRANSACTION_H
 #define GOOGLEPLAYSTORETRANSACTION_H
 
-#include <qt6purchasing/abstracttransaction.h>
+#include <qt6purchasing/transaction.h>
 
-class GooglePlayStoreTransaction : public AbstractTransaction
+class GooglePlayStoreTransaction : public Transaction
 {
     Q_OBJECT
-    QML_NAMED_ELEMENT(Transaction)
-    QML_UNCREATABLE("Transactions are created by the store backend")
-
+    
 public:
-    GooglePlayStoreTransaction(QJsonObject json, QObject * parent = nullptr);
-
-    QString productId() const override;
-    QJsonObject json() const { return _json; }
-
+    explicit GooglePlayStoreTransaction(const QString & orderId, const QString & productId, 
+                                       const QString & purchaseToken, QObject * parent = nullptr);
+    
+    QString purchaseToken() const { return _purchaseToken; }
+    
 private:
-    QJsonObject _json;
-
+    QString _purchaseToken;
 };
 
 #endif // GOOGLEPLAYSTORETRANSACTION_H

@@ -5,12 +5,13 @@
 #include <QObject>
 #include <QQmlEngine>
 #include <QQmlListProperty>
+#include <QSharedPointer>
 
 // Forward declaration for AbstractProduct to avoid circular dependency
 class AbstractProduct;
 
-// Need full definition for AbstractTransaction due to signal parameters
-#include <qt6purchasing/abstracttransaction.h>
+// Need full definition for Transaction for member access and QML integration
+#include <qt6purchasing/transaction.h>
 
 class AbstractStoreBackend : public QObject
 {
@@ -49,9 +50,10 @@ public:
     virtual void startConnection() = 0;
     virtual void registerProduct(AbstractProduct * product) = 0;
     virtual void purchaseProduct(AbstractProduct * product) = 0;
-    virtual void consumePurchase(AbstractTransaction * transaction) = 0;
+    virtual void consumePurchase(QSharedPointer<Transaction> transaction) = 0;
 
     Q_INVOKABLE virtual void restorePurchases() = 0;
+    Q_INVOKABLE virtual void finalize(QSharedPointer<Transaction> transaction) = 0;
 
 protected:
     explicit AbstractStoreBackend(QObject * parent = nullptr);
@@ -74,12 +76,12 @@ signals:
     void canMakePurchasesChanged();
 
     void productRegistered(AbstractProduct * product);
-    void purchaseSucceeded(AbstractTransaction * transaction);
-    void purchasePending(AbstractTransaction * transaction);
-    void purchaseRestored(AbstractTransaction * transaction);
-    void purchaseFailed(const QString& productId, int error, int platformCode, const QString& message);
-    void consumePurchaseSucceeded(AbstractTransaction * transaction);
-    void consumePurchaseFailed(AbstractTransaction * transaction);
+    void purchaseSucceeded(QSharedPointer<Transaction> transaction);
+    void purchasePending(QSharedPointer<Transaction> transaction);
+    void purchaseRestored(QSharedPointer<Transaction> transaction);
+    void purchaseFailed(const QString & productId, int error, int platformCode, const QString & message);
+    void consumePurchaseSucceeded(QSharedPointer<Transaction> transaction);
+    void consumePurchaseFailed(QSharedPointer<Transaction> transaction);
 };
 
 #endif // ABSTRACTSTOREBACKEND_H
