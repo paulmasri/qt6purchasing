@@ -53,7 +53,7 @@ public:
     virtual void consumePurchase(QSharedPointer<Transaction> transaction) = 0;
 
     Q_INVOKABLE virtual void restorePurchases() = 0;
-    Q_INVOKABLE virtual void finalize(QSharedPointer<Transaction> transaction) = 0;
+    Q_INVOKABLE virtual void finalize(QSharedPointer<Transaction> transaction);
 
 protected:
     explicit AbstractStoreBackend(QObject * parent = nullptr);
