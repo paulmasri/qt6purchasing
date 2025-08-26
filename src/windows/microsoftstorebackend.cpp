@@ -264,7 +264,7 @@ void MicrosoftStoreBackend::consumePurchase(QSharedPointer<Transaction> transact
     AbstractProduct * product = _registeredProducts.value(transaction->productId(), nullptr);
     
     if (!product) {
-        qWarning() << "Cannot find product for transaction:" << transaction.productId;
+        qWarning() << "Cannot find product for transaction:" << transaction->productId();
         emit consumePurchaseFailed(transaction);
         return;
     }
