@@ -9,15 +9,14 @@ struct Transaction
     Q_GADGET
     QML_VALUE_TYPE(transaction)
     
-    Q_PROPERTY(QString orderId MEMBER orderId)
-    Q_PROPERTY(QString productId MEMBER productId)
-    Q_PROPERTY(QString purchaseToken MEMBER purchaseToken)
+    Q_PROPERTY(QString orderId MEMBER orderId CONSTANT)
+    Q_PROPERTY(QString productId MEMBER productId CONSTANT)
     
 public:
     QString orderId;
     QString productId;
     
-    // Platform-specific fields
+    // Platform-specific fields (not exposed to QML)
     QString purchaseToken;  // Android only - for purchase acknowledgment
 };
 
