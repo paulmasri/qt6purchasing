@@ -1,28 +1,24 @@
 #ifndef TRANSACTION_H
 #define TRANSACTION_H
 
-#include <QObject>
 #include <QQmlEngine>
 #include <QString>
 
-class Transaction : public QObject
+struct Transaction
 {
-    Q_OBJECT
-    QML_ELEMENT
-    QML_UNCREATABLE("Transaction objects are created by the store backend")
+    Q_GADGET
+    QML_VALUE_TYPE(transaction)
     
-    Q_PROPERTY(QString orderId READ orderId CONSTANT)
-    Q_PROPERTY(QString productId READ productId CONSTANT)
+    Q_PROPERTY(QString orderId MEMBER orderId)
+    Q_PROPERTY(QString productId MEMBER productId)
+    Q_PROPERTY(QString purchaseToken MEMBER purchaseToken)
     
 public:
-    explicit Transaction(const QString & orderId, const QString & productId, QObject * parent = nullptr);
+    QString orderId;
+    QString productId;
     
-    QString orderId() const { return _orderId; }
-    QString productId() const { return _productId; }
-    
-private:
-    QString _orderId;
-    QString _productId;
+    // Platform-specific fields
+    QString purchaseToken;  // Android only - for purchase acknowledgment
 };
 
 #endif // TRANSACTION_H

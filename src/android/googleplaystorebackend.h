@@ -45,7 +45,7 @@ public:
     void startConnection() override;
     void registerProduct(AbstractProduct * product) override;
     void purchaseProduct(AbstractProduct * product) override;
-    void consumePurchase(QSharedPointer<Transaction> transaction) override;
+    void consumePurchase(Transaction transaction) override;
     void restorePurchases() override;
     bool canMakePurchases() const override;
 

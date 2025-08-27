@@ -21,12 +21,10 @@ if(ANDROID)
     list(APPEND PLATFORM_SOURCES
         android/googleplaystorebackend.cpp
         android/googleplaystoreproduct.cpp
-        android/googleplaystoretransaction.cpp
     )
     list(APPEND PLATFORM_HEADERS
         android/googleplaystorebackend.h
         android/googleplaystoreproduct.h
-        android/googleplaystoretransaction.h
     )
 
     set(PLATFORM_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR}/android)
@@ -47,12 +45,10 @@ elseif(APPLE)
     list(APPEND PLATFORM_SOURCES
         apple/appleappstorebackend.mm
         apple/appleappstoreproduct.mm
-        apple/appleappstoretransaction.cpp
     )
     list(APPEND PLATFORM_HEADERS
         apple/appleappstorebackend.h
         apple/appleappstoreproduct.h
-        apple/appleappstoretransaction.h
     )
 
     set(PLATFORM_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR}/apple)
@@ -87,7 +83,6 @@ endif()
 set(CORE_SOURCES
     abstractproduct.cpp
     abstractstorebackend.cpp
-    transaction.cpp
 )
 set(CORE_HEADERS
     include/qt6purchasing/abstractproduct.h

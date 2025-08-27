@@ -3,7 +3,6 @@
 
 #include <QObject>
 #include <QQmlEngine>
-#include <QSharedPointer>
 
 // Forward declaration for AbstractStoreBackend to avoid circular dependency
 class AbstractStoreBackend;
@@ -85,12 +84,12 @@ signals:
     void titleChanged();
     void microsoftStoreIdChanged();
 
-    void purchaseSucceeded(QSharedPointer<Transaction> transaction);
-    void purchasePending(QSharedPointer<Transaction> transaction);
+    void purchaseSucceeded(Transaction transaction);
+    void purchasePending(Transaction transaction);
     void purchaseFailed(int error, int platformCode, const QString & message);
-    void purchaseRestored(QSharedPointer<Transaction> transaction);
-    void consumePurchaseSucceeded(QSharedPointer<Transaction> transaction);
-    void consumePurchaseFailed(QSharedPointer<Transaction> transaction);
+    void purchaseRestored(Transaction transaction);
+    void consumePurchaseSucceeded(Transaction transaction);
+    void consumePurchaseFailed(Transaction transaction);
 };
 
 #endif // ABSTRACTPRODUCT_H

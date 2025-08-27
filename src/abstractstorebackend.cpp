@@ -23,10 +23,10 @@ AbstractStoreBackend::AbstractStoreBackend(QObject * parent) : QObject(parent)
         qDebug() << "Product registered:" << product->identifier();
     });
 
-    connect(this, &AbstractStoreBackend::purchaseSucceeded, this, [this](QSharedPointer<Transaction> transaction){
-        qDebug() << "purchaseSucceeded:" << transaction->orderId();
+    connect(this, &AbstractStoreBackend::purchaseSucceeded, this, [this](Transaction transaction){
+        qDebug() << "purchaseSucceeded:" << transaction.orderId;
 
-        AbstractProduct * ap = product(transaction->productId());
+        AbstractProduct * ap = product(transaction.productId);
         if (ap) {
             emit ap->purchaseSucceeded(transaction);
         } else {
@@ -34,10 +34,10 @@ AbstractStoreBackend::AbstractStoreBackend(QObject * parent) : QObject(parent)
         }
     });
 
-    connect(this, &AbstractStoreBackend::purchasePending, this, [this](QSharedPointer<Transaction> transaction){
-        qDebug() << "purchasePending:" << transaction->orderId();
+    connect(this, &AbstractStoreBackend::purchasePending, this, [this](Transaction transaction){
+        qDebug() << "purchasePending:" << transaction.orderId;
 
-        AbstractProduct * ap = product(transaction->productId());
+        AbstractProduct * ap = product(transaction.productId);
         if (ap) {
             emit ap->purchasePending(transaction);
         } else {
@@ -45,10 +45,10 @@ AbstractStoreBackend::AbstractStoreBackend(QObject * parent) : QObject(parent)
         }
     });
 
-    connect(this, &AbstractStoreBackend::purchaseRestored, this, [this](QSharedPointer<Transaction> transaction){
-        qDebug() << "purchaseRestored:" << transaction->orderId();
+    connect(this, &AbstractStoreBackend::purchaseRestored, this, [this](Transaction transaction){
+        qDebug() << "purchaseRestored:" << transaction.orderId;
 
-        AbstractProduct * ap = product(transaction->productId());
+        AbstractProduct * ap = product(transaction.productId);
         if (ap) {
             emit ap->purchaseRestored(transaction);
         } else {
@@ -71,10 +71,10 @@ AbstractStoreBackend::AbstractStoreBackend(QObject * parent) : QObject(parent)
         }
     });
 
-    connect(this, &AbstractStoreBackend::consumePurchaseSucceeded, this, [this](QSharedPointer<Transaction> transaction){
-        qDebug() << "consumePurchaseSucceeded:" << transaction->orderId();
+    connect(this, &AbstractStoreBackend::consumePurchaseSucceeded, this, [this](Transaction transaction){
+        qDebug() << "consumePurchaseSucceeded:" << transaction.orderId;
 
-        AbstractProduct * ap = product(transaction->productId());
+        AbstractProduct * ap = product(transaction.productId);
         if (ap) {
             emit ap->consumePurchaseSucceeded(transaction);
         } else {
@@ -82,10 +82,10 @@ AbstractStoreBackend::AbstractStoreBackend(QObject * parent) : QObject(parent)
         }
     });
 
-    connect(this, &AbstractStoreBackend::consumePurchaseFailed, this, [this](QSharedPointer<Transaction> transaction){
-        qDebug() << "consumePurchaseFailed:" << transaction->orderId();
+    connect(this, &AbstractStoreBackend::consumePurchaseFailed, this, [this](Transaction transaction){
+        qDebug() << "consumePurchaseFailed:" << transaction.orderId;
 
-        AbstractProduct * ap = product(transaction->productId());
+        AbstractProduct * ap = product(transaction.productId);
         if (ap) {
             emit ap->consumePurchaseFailed(transaction);
         } else {
@@ -132,9 +132,9 @@ void AbstractStoreBackend::setCanMakePurchases(bool canMakePurchases)
     qDebug() << "Store canMakePurchases status changed to" << (_canMakePurchases ? "enabled" : "disabled");
 }
 
-void AbstractStoreBackend::finalize(QSharedPointer<Transaction> transaction)
+void AbstractStoreBackend::finalize(Transaction transaction)
 {
-    qDebug() << "Store: Finalizing transaction" << transaction->orderId();
+    qDebug() << "Store: Finalizing transaction" << transaction.orderId;
     consumePurchase(transaction);
 }
 

@@ -1,9 +1,7 @@
 #include "appleappstorebackend.h"
 #include "appleappstoreproduct.h"
-#include "appleappstoretransaction.h"
 
 #include <QDebug>
-#include <QSharedPointer>
 #include <QJsonObject>
 #include <QThread>
 #include <QCoreApplication>
@@ -21,11 +19,12 @@ namespace AppleAppStoreTransactionState {
 }
 
 // Helper functions for AppleAppStoreTransaction creation
-static QSharedPointer<AppleAppStoreTransaction> transactionFromSKTransaction(SKPaymentTransaction * skTransaction)
+static Transaction transactionFromSKTransaction(SKPaymentTransaction * skTransaction)
 {
-    QString orderId = QString::fromNSString(skTransaction.transactionIdentifier);
-    QString productId = QString::fromNSString(skTransaction.payment.productIdentifier);
-    return QSharedPointer<AppleAppStoreTransaction>::create(orderId, productId, skTransaction);
+    Transaction transaction;
+    transaction.orderId = QString::fromNSString(skTransaction.transactionIdentifier);
+    transaction.productId = QString::fromNSString(skTransaction.payment.productIdentifier);
+    return transaction;
 }
 
 // Helper functions for error mapping
@@ -225,7 +224,7 @@ AppleAppStoreBackend * AppleAppStoreBackend::s_currentInstance = nullptr;
         case AppleAppStoreTransactionState::Purchased:
             {
                 auto transaction = transactionFromSKTransaction(skTransaction);
-                QMetaObject::invokeMethod(backend, "purchaseSucceeded", Qt::AutoConnection, Q_ARG(QSharedPointer<Transaction>, transaction));
+                QMetaObject::invokeMethod(backend, "purchaseSucceeded", Qt::AutoConnection, Q_ARG(Transaction, transaction));
             }
             break;
         case AppleAppStoreTransactionState::Failed:
@@ -245,13 +244,13 @@ AppleAppStoreBackend * AppleAppStoreBackend::s_currentInstance = nullptr;
         case AppleAppStoreTransactionState::Restored:
             {
                 auto transaction = transactionFromSKTransaction(skTransaction);
-                QMetaObject::invokeMethod(backend, "purchaseRestored", Qt::AutoConnection, Q_ARG(QSharedPointer<Transaction>, transaction));
+                QMetaObject::invokeMethod(backend, "purchaseRestored", Qt::AutoConnection, Q_ARG(Transaction, transaction));
             }
             break;
         case AppleAppStoreTransactionState::Deferred:
             {
                 auto transaction = transactionFromSKTransaction(skTransaction);
-                QMetaObject::invokeMethod(backend, "purchasePending", Qt::AutoConnection, Q_ARG(QSharedPointer<Transaction>, transaction));
+                QMetaObject::invokeMethod(backend, "purchasePending", Qt::AutoConnection, Q_ARG(Transaction, transaction));
             }
             break;
         }
@@ -300,26 +299,26 @@ void AppleAppStoreBackend::purchaseProduct(AbstractProduct * product)
     [[SKPaymentQueue defaultQueue] addPayment:payment];
 }
 
-void AppleAppStoreBackend::consumePurchase(QSharedPointer<Transaction> transaction)
+void AppleAppStoreBackend::consumePurchase(Transaction transaction)
 {
-    qDebug() << "iOS: consumePurchase called for" << transaction->orderId();
+    qDebug() << "iOS: consumePurchase called for" << transaction.orderId;
     
-    // Cast to AppleAppStoreTransaction to access nativeTransaction
-    auto iosTransaction = qSharedPointerDynamicCast<AppleAppStoreTransaction>(transaction);
-    if (!iosTransaction) {
-        qCritical() << "iOS backend received non-AppleAppStoreTransaction object!";
-        emit consumePurchaseFailed(transaction);
-        return;
+    // Look up the SKPaymentTransaction using orderId (transactionIdentifier)
+    NSString *identifier = transaction.orderId.toNSString();
+    BOOL found = NO;
+    
+    for (SKPaymentTransaction *skTransaction in [[SKPaymentQueue defaultQueue] transactions]) {
+        if ([skTransaction.transactionIdentifier isEqualToString:identifier]) {
+            [[SKPaymentQueue defaultQueue] finishTransaction:skTransaction];
+            emit consumePurchaseSucceeded(transaction);
+            found = YES;
+            break;
+        }
     }
     
-    // Use the stored native transaction to call finishTransaction
-    if (iosTransaction->nativeTransaction()) {
-        SKPaymentTransaction * skTransaction = iosTransaction->nativeTransaction();
-        [[SKPaymentQueue defaultQueue] finishTransaction:skTransaction];
-        emit consumePurchaseSucceeded(transaction);
-    } else {
-        qWarning() << "iOS: No native transaction stored for orderId:" << transaction->orderId();
-        emit consumePurchaseSucceeded(transaction); // Still emit success to avoid hanging the app
+    if (!found) {
+        qWarning() << "iOS: Transaction not found in queue for orderId:" << transaction.orderId;
+        emit consumePurchaseFailed(transaction);
     }
 }
 

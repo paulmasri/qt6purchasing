@@ -5,7 +5,6 @@
 #include <QObject>
 #include <QQmlEngine>
 #include <QQmlListProperty>
-#include <QSharedPointer>
 
 // Forward declaration for AbstractProduct to avoid circular dependency
 class AbstractProduct;
@@ -50,10 +49,10 @@ public:
     virtual void startConnection() = 0;
     virtual void registerProduct(AbstractProduct * product) = 0;
     virtual void purchaseProduct(AbstractProduct * product) = 0;
-    virtual void consumePurchase(QSharedPointer<Transaction> transaction) = 0;
+    virtual void consumePurchase(Transaction transaction) = 0;
 
     Q_INVOKABLE virtual void restorePurchases() = 0;
-    Q_INVOKABLE virtual void finalize(QSharedPointer<Transaction> transaction);
+    Q_INVOKABLE virtual void finalize(Transaction transaction);
 
 protected:
     explicit AbstractStoreBackend(QObject * parent = nullptr);
@@ -76,12 +75,12 @@ signals:
     void canMakePurchasesChanged();
 
     void productRegistered(AbstractProduct * product);
-    void purchaseSucceeded(QSharedPointer<Transaction> transaction);
-    void purchasePending(QSharedPointer<Transaction> transaction);
-    void purchaseRestored(QSharedPointer<Transaction> transaction);
+    void purchaseSucceeded(Transaction transaction);
+    void purchasePending(Transaction transaction);
+    void purchaseRestored(Transaction transaction);
     void purchaseFailed(const QString & productId, int error, int platformCode, const QString & message);
-    void consumePurchaseSucceeded(QSharedPointer<Transaction> transaction);
-    void consumePurchaseFailed(QSharedPointer<Transaction> transaction);
+    void consumePurchaseSucceeded(Transaction transaction);
+    void consumePurchaseFailed(Transaction transaction);
 };
 
 #endif // ABSTRACTSTOREBACKEND_H

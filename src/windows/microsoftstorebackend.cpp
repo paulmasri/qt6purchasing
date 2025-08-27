@@ -3,7 +3,6 @@
 #include "microsoftstoreworkers.h"
 
 #include <QDebug>
-#include <QSharedPointer>
 #include <QThread>
 #include <QCoreApplication>
 #include <QGuiApplication>
@@ -244,8 +243,10 @@ void MicrosoftStoreBackend::onPurchaseComplete(AbstractProduct * product, StoreP
     qDebug() << "onPurchaseComplete: Backend thread:" << this->thread() << "Current thread:" << QThread::currentThread();
     if (status == StorePurchaseStatus::Succeeded) {
         // Create transaction data for success
-        QString orderId = QString("ms_%1_%2").arg(product->identifier()).arg(QDateTime::currentMSecsSinceEpoch());
-        auto transaction = QSharedPointer<Transaction>::create(orderId, product->identifier());
+        // Create transaction data for success
+        Transaction transaction;
+        transaction.orderId = QString("ms_%1_%2").arg(product->identifier()).arg(QDateTime::currentMSecsSinceEpoch());
+        transaction.productId = product->identifier();
         emit purchaseSucceeded(transaction);
     } else {
         // Use the real Windows StorePurchaseStatus as platform code
@@ -256,15 +257,15 @@ void MicrosoftStoreBackend::onPurchaseComplete(AbstractProduct * product, StoreP
     }
 }
 
-void MicrosoftStoreBackend::consumePurchase(QSharedPointer<Transaction> transaction)
+void MicrosoftStoreBackend::consumePurchase(Transaction transaction)
 {
-    qDebug() << "Consume transaction called for:" << transaction->orderId() << "Product:" << transaction->productId();
+    qDebug() << "Consume transaction called for:" << transaction.orderId << "Product:" << transaction.productId;
     
     // Look up the product to check its type
-    AbstractProduct * product = _registeredProducts.value(transaction->productId(), nullptr);
+    AbstractProduct * product = _registeredProducts.value(transaction.productId, nullptr);
     
     if (!product) {
-        qWarning() << "Cannot find product for transaction:" << transaction->productId();
+        qWarning() << "Cannot find product for transaction:" << transaction.productId;
         emit consumePurchaseFailed(transaction);
         return;
     }
@@ -287,7 +288,7 @@ void MicrosoftStoreBackend::consumePurchase(QSharedPointer<Transaction> transact
     }
     
     // Get the Microsoft Store ID
-    QString storeId = transaction->productId();
+    QString storeId = transaction.productId;
 #ifdef Q_OS_WIN
     QString microsoftStoreId = product->microsoftStoreId();
     if (!microsoftStoreId.isEmpty()) {
@@ -304,8 +305,8 @@ void MicrosoftStoreBackend::consumePurchase(QSharedPointer<Transaction> transact
     connect(thread, &QThread::started, worker, &StoreConsumableFulfillmentWorker::performFulfillment);
     
     // Capture transaction data by value for logging
-    QString orderId = transaction->orderId();
-    QString productId = transaction->productId();
+    QString orderId = transaction.orderId;
+    QString productId = transaction.productId;
     connect(worker, &StoreConsumableFulfillmentWorker::fulfillmentComplete, this,
             [this, transaction, orderId, productId](bool success, const QString& result) {
                 this->onConsumableFulfillmentComplete(orderId, productId, success, result);
@@ -370,7 +371,9 @@ void MicrosoftStoreBackend::onRestoreComplete(const QList<QVariantMap> &restored
         }
         
         if (!qtIdentifier.isEmpty()) {
-            auto transaction = QSharedPointer<Transaction>::create(orderId, qtIdentifier);
+            Transaction transaction;
+            transaction.orderId = orderId;
+            transaction.productId = qtIdentifier;
             emit purchaseRestored(transaction);
             qDebug() << "Restored purchase: MS Store ID" << msStoreId << "-> Qt ID" << qtIdentifier;
         } else {
