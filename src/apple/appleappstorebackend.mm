@@ -5,6 +5,7 @@
 #include <QJsonObject>
 #include <QThread>
 #include <QCoreApplication>
+#include <QTimer>
 
 #import <StoreKit/StoreKit.h>
 
@@ -300,8 +301,10 @@ void AppleAppStoreBackend::startConnection()
     setConnected(_iapManager != nullptr);
     setCanMakePurchases(canMakePurchases());
     
-    // Now that everything is ready, process any queued transactions
-    [_iapManager processQueuedTransactions];
+    // Delay processing until next event loop tick to allow QML products to be added to backend
+    QTimer::singleShot(0, [this]() {
+        [_iapManager processQueuedTransactions];
+    });
 }
 
 void AppleAppStoreBackend::registerProduct(AbstractProduct * product)
