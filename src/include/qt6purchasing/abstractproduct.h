@@ -7,8 +7,8 @@
 // Forward declaration for AbstractStoreBackend to avoid circular dependency
 class AbstractStoreBackend;
 
-// Need full definition for AbstractTransaction due to signal parameters
-#include <qt6purchasing/abstracttransaction.h>
+// Need full definition for Transaction due to signal parameters
+#include <qt6purchasing/transaction.h>
 
 class AbstractProduct : public QObject
 {
@@ -73,7 +73,7 @@ protected:
     QString _microsoftStoreId;
 
 private:
-    AbstractStoreBackend* findStoreBackend() const;
+    AbstractStoreBackend * findStoreBackend() const;
 
 signals:
     void statusChanged();
@@ -84,13 +84,12 @@ signals:
     void titleChanged();
     void microsoftStoreIdChanged();
 
-    void purchaseSucceeded(AbstractTransaction * transaction);
-    void purchasePending(AbstractTransaction * transaction);
-    void purchaseFailed(int error, int platformCode, const QString& message);
-    void purchaseRestored(AbstractTransaction * transaction);
-    void consumePurchaseSucceeded(AbstractTransaction * transaction);
-    void consumePurchaseFailed(AbstractTransaction * transaction);
-
+    void purchaseSucceeded(Transaction transaction);
+    void purchasePending(Transaction transaction);
+    void purchaseFailed(int error, int platformCode, const QString & message);
+    void purchaseRestored(Transaction transaction);
+    void consumePurchaseSucceeded(Transaction transaction);
+    void consumePurchaseFailed(Transaction transaction);
 };
 
 #endif // ABSTRACTPRODUCT_H

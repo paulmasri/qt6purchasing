@@ -1,5 +1,4 @@
 #include <qt6purchasing/abstractproduct.h>
-#include <qt6purchasing/abstracttransaction.h>
 #include <qt6purchasing/abstractstorebackend.h>
 
 AbstractProduct::AbstractProduct(QObject * parent) : QObject(parent)
@@ -7,11 +6,11 @@ AbstractProduct::AbstractProduct(QObject * parent) : QObject(parent)
     connect(this, &AbstractProduct::identifierChanged, this, &AbstractProduct::registerInStore);
 }
 
-AbstractStoreBackend* AbstractProduct::findStoreBackend() const
+AbstractStoreBackend * AbstractProduct::findStoreBackend() const
 {
     QObject* p = parent();
     while (p) {
-        if (auto* store = qobject_cast<AbstractStoreBackend*>(p))
+        if (auto * store = qobject_cast<AbstractStoreBackend *>(p))
             return store;
         p = p->parent();
     }

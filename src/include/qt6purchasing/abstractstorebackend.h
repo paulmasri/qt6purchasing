@@ -9,8 +9,8 @@
 // Forward declaration for AbstractProduct to avoid circular dependency
 class AbstractProduct;
 
-// Need full definition for AbstractTransaction due to signal parameters
-#include <qt6purchasing/abstracttransaction.h>
+// Need full definition for Transaction for member access and QML integration
+#include <qt6purchasing/transaction.h>
 
 class AbstractStoreBackend : public QObject
 {
@@ -49,9 +49,10 @@ public:
     virtual void startConnection() = 0;
     virtual void registerProduct(AbstractProduct * product) = 0;
     virtual void purchaseProduct(AbstractProduct * product) = 0;
-    virtual void consumePurchase(AbstractTransaction * transaction) = 0;
+    virtual void consumePurchase(Transaction transaction) = 0;
 
     Q_INVOKABLE virtual void restorePurchases() = 0;
+    Q_INVOKABLE virtual void finalize(Transaction transaction);
 
 protected:
     explicit AbstractStoreBackend(QObject * parent = nullptr);
@@ -74,12 +75,12 @@ signals:
     void canMakePurchasesChanged();
 
     void productRegistered(AbstractProduct * product);
-    void purchaseSucceeded(AbstractTransaction * transaction);
-    void purchasePending(AbstractTransaction * transaction);
-    void purchaseRestored(AbstractTransaction * transaction);
-    void purchaseFailed(const QString& productId, int error, int platformCode, const QString& message);
-    void consumePurchaseSucceeded(AbstractTransaction * transaction);
-    void consumePurchaseFailed(AbstractTransaction * transaction);
+    void purchaseSucceeded(Transaction transaction);
+    void purchasePending(Transaction transaction);
+    void purchaseRestored(Transaction transaction);
+    void purchaseFailed(const QString & productId, int error, int platformCode, const QString & message);
+    void consumePurchaseSucceeded(Transaction transaction);
+    void consumePurchaseFailed(Transaction transaction);
 };
 
 #endif // ABSTRACTSTOREBACKEND_H

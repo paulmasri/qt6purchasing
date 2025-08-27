@@ -1,6 +1,5 @@
 #include "microsoftstorebackend.h"
 #include "microsoftstoreproduct.h"
-#include "microsoftstoretransaction.h"
 #include "microsoftstoreworkers.h"
 
 #include <QDebug>
@@ -144,7 +143,7 @@ void MicrosoftStoreBackend::registerProduct(AbstractProduct * product)
     thread->start();
 }
 
-void MicrosoftStoreBackend::onProductQueried(AbstractProduct* product, bool success, const QVariantMap& productData)
+void MicrosoftStoreBackend::onProductQueried(AbstractProduct * product, bool success, const QVariantMap & productData)
 {
     if (success) {
         auto msProduct = qobject_cast<MicrosoftStoreProduct*>(product);
@@ -239,13 +238,15 @@ void MicrosoftStoreBackend::purchaseProduct(AbstractProduct * product)
     thread->start();
 }
 
-void MicrosoftStoreBackend::onPurchaseComplete(AbstractProduct* product, StorePurchaseStatus status)
+void MicrosoftStoreBackend::onPurchaseComplete(AbstractProduct * product, StorePurchaseStatus status)
 {
     qDebug() << "onPurchaseComplete: Backend thread:" << this->thread() << "Current thread:" << QThread::currentThread();
     if (status == StorePurchaseStatus::Succeeded) {
-        // Create minimal transaction for success
-        QString orderId = QString("ms_%1_%2").arg(product->identifier()).arg(QDateTime::currentMSecsSinceEpoch());
-        auto transaction = new MicrosoftStoreTransaction(orderId, product->identifier(), this);
+        // Create transaction data for success
+        // Create transaction data for success
+        Transaction transaction;
+        transaction.orderId = QString("ms_%1_%2").arg(product->identifier()).arg(QDateTime::currentMSecsSinceEpoch());
+        transaction.productId = product->identifier();
         emit purchaseSucceeded(transaction);
     } else {
         // Use the real Windows StorePurchaseStatus as platform code
@@ -256,20 +257,15 @@ void MicrosoftStoreBackend::onPurchaseComplete(AbstractProduct* product, StorePu
     }
 }
 
-void MicrosoftStoreBackend::consumePurchase(AbstractTransaction * transaction)
+void MicrosoftStoreBackend::consumePurchase(Transaction transaction)
 {
-    if (!transaction) {
-        qWarning() << "consumePurchase called with null transaction";
-        return;
-    }
-    
-    qDebug() << "Consume purchase called for:" << transaction->orderId() << "Product:" << transaction->productId();
+    qDebug() << "Consume transaction called for:" << transaction.orderId << "Product:" << transaction.productId;
     
     // Look up the product to check its type
-    AbstractProduct* product = _registeredProducts.value(transaction->productId(), nullptr);
+    AbstractProduct * product = _registeredProducts.value(transaction.productId, nullptr);
     
     if (!product) {
-        qWarning() << "Cannot find product for transaction:" << transaction->productId();
+        qWarning() << "Cannot find product for transaction:" << transaction.productId;
         emit consumePurchaseFailed(transaction);
         return;
     }
@@ -292,7 +288,7 @@ void MicrosoftStoreBackend::consumePurchase(AbstractTransaction * transaction)
     }
     
     // Get the Microsoft Store ID
-    QString storeId = transaction->productId();
+    QString storeId = transaction.productId;
 #ifdef Q_OS_WIN
     QString microsoftStoreId = product->microsoftStoreId();
     if (!microsoftStoreId.isEmpty()) {
@@ -307,12 +303,10 @@ void MicrosoftStoreBackend::consumePurchase(AbstractTransaction * transaction)
     
     worker->moveToThread(thread);
     connect(thread, &QThread::started, worker, &StoreConsumableFulfillmentWorker::performFulfillment);
-    // Retain transaction to keep it alive during async fulfillment
-    transaction->retain();
     
     // Capture transaction data by value for logging
-    QString orderId = transaction->orderId();
-    QString productId = transaction->productId();
+    QString orderId = transaction.orderId;
+    QString productId = transaction.productId;
     connect(worker, &StoreConsumableFulfillmentWorker::fulfillmentComplete, this,
             [this, transaction, orderId, productId](bool success, const QString& result) {
                 this->onConsumableFulfillmentComplete(orderId, productId, success, result);
@@ -323,9 +317,6 @@ void MicrosoftStoreBackend::consumePurchase(AbstractTransaction * transaction)
                 } else {
                     emit consumePurchaseFailed(transaction);
                 }
-                
-                // Safe cleanup now that signals are emitted
-                transaction->destroy();
             }, Qt::QueuedConnection);
     connect(worker, &StoreConsumableFulfillmentWorker::finished, thread, &QThread::quit);
     connect(thread, &QThread::finished, thread, &QThread::deleteLater);
@@ -372,7 +363,7 @@ void MicrosoftStoreBackend::onRestoreComplete(const QList<QVariantMap> &restored
         
         // Find the Qt identifier by searching registered products
         QString qtIdentifier;
-        for (AbstractProduct* product : products()) {
+        for (AbstractProduct * product : products()) {
             if (product->microsoftStoreId() == msStoreId) {
                 qtIdentifier = product->identifier();
                 break;
@@ -380,7 +371,9 @@ void MicrosoftStoreBackend::onRestoreComplete(const QList<QVariantMap> &restored
         }
         
         if (!qtIdentifier.isEmpty()) {
-            auto transaction = new MicrosoftStoreTransaction(orderId, qtIdentifier, this);
+            Transaction transaction;
+            transaction.orderId = orderId;
+            transaction.productId = qtIdentifier;
             emit purchaseRestored(transaction);
             qDebug() << "Restored purchase: MS Store ID" << msStoreId << "-> Qt ID" << qtIdentifier;
         } else {
@@ -389,7 +382,7 @@ void MicrosoftStoreBackend::onRestoreComplete(const QList<QVariantMap> &restored
     }
 }
 
-void MicrosoftStoreBackend::onConsumableFulfillmentComplete(const QString& orderId, const QString& productId, bool success, const QString& result)
+void MicrosoftStoreBackend::onConsumableFulfillmentComplete(const QString & orderId, const QString & productId, bool success, const QString & result)
 {
     if (success) {
         qDebug() << "Consumable fulfillment completed successfully for product:" << productId << "order:" << orderId;
