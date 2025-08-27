@@ -22,7 +22,10 @@ namespace AppleAppStoreTransactionState {
 static Transaction transactionFromSKTransaction(SKPaymentTransaction * skTransaction)
 {
     Transaction transaction;
-    transaction.orderId = QString::fromNSString(skTransaction.transactionIdentifier);
+    // For pending transactions, transactionIdentifier is nil - use empty string for now
+    // The real identifier will be available when the transaction completes
+    transaction.orderId = skTransaction.transactionIdentifier ? 
+        QString::fromNSString(skTransaction.transactionIdentifier) : QString();
     transaction.productId = QString::fromNSString(skTransaction.payment.productIdentifier);
     return transaction;
 }
@@ -216,10 +219,16 @@ AppleAppStoreBackend * AppleAppStoreBackend::s_currentInstance = nullptr;
 
     Q_UNUSED(queue);
 
+    qDebug() << "iOS: paymentQueue:updatedTransactions called with" << skTransactions.count << "transactions";
     for (SKPaymentTransaction * skTransaction in skTransactions) {
+        qDebug() << "iOS: Processing transaction ID:" << QString::fromNSString(skTransaction.transactionIdentifier) << "state:" << skTransaction.transactionState << "product:" << QString::fromNSString(skTransaction.payment.productIdentifier);
         switch (static_cast<AppleAppStoreTransactionState::State>(skTransaction.transactionState)) {
         case AppleAppStoreTransactionState::Purchasing:
-            //unhandled
+            {
+                qDebug() << "iOS: Transaction moving to Purchasing state (Ask to Buy approved or payment processing)";
+                auto transaction = transactionFromSKTransaction(skTransaction);
+                QMetaObject::invokeMethod(backend, "purchasePending", Qt::AutoConnection, Q_ARG(Transaction, transaction));
+            }
             break;
         case AppleAppStoreTransactionState::Purchased:
             {
