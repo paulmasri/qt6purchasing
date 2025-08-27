@@ -129,6 +129,7 @@ AppleAppStoreBackend * AppleAppStoreBackend::s_currentInstance = nullptr;
 }
 
 -(id)init;
+-(void)processQueuedTransactions;
 -(void)requestProductData:(NSString *)identifier;
 
 @end
@@ -139,17 +140,8 @@ AppleAppStoreBackend * AppleAppStoreBackend::s_currentInstance = nullptr;
     if (self = [super init]) {
         pendingTransactions = [[NSMutableArray<SKPaymentTransaction *> alloc] init];
         
-        // Replace early observer with this one
-        [[SKPaymentQueue defaultQueue] removeTransactionObserver:[EarlyTransactionObserver shared]];
+        // Add this observer but don't remove early observer yet - will be removed after processing queue
         [[SKPaymentQueue defaultQueue] addTransactionObserver:self];
-        
-        // Process any queued transactions from early observer
-        NSArray<SKPaymentTransaction *> *queuedTransactions = [[EarlyTransactionObserver shared] getQueuedTransactions];
-        if (queuedTransactions.count > 0) {
-            qDebug() << "Processing" << queuedTransactions.count << "queued transactions from early observer";
-            [self paymentQueue:[SKPaymentQueue defaultQueue] updatedTransactions:queuedTransactions];
-        }
-        [[EarlyTransactionObserver shared] clearQueuedTransactions];
     }
     return self;
 }
@@ -157,6 +149,20 @@ AppleAppStoreBackend * AppleAppStoreBackend::s_currentInstance = nullptr;
 -(void)dealloc
 {
     [[SKPaymentQueue defaultQueue] removeTransactionObserver:self];
+}
+
+-(void)processQueuedTransactions
+{
+    // Process any queued transactions from early observer
+    NSArray<SKPaymentTransaction *> *queuedTransactions = [[EarlyTransactionObserver shared] getQueuedTransactions];
+    if (queuedTransactions.count > 0) {
+        qDebug() << "Processing" << queuedTransactions.count << "queued transactions from early observer";
+        [self paymentQueue:[SKPaymentQueue defaultQueue] updatedTransactions:queuedTransactions];
+    }
+    [[EarlyTransactionObserver shared] clearQueuedTransactions];
+    
+    // Now it's safe to remove the early observer
+    [[SKPaymentQueue defaultQueue] removeTransactionObserver:[EarlyTransactionObserver shared]];
 }
 
 -(void)requestProductData:(NSString *)identifier
@@ -293,6 +299,9 @@ void AppleAppStoreBackend::startConnection()
     _iapManager = [[InAppPurchaseManager alloc] init];
     setConnected(_iapManager != nullptr);
     setCanMakePurchases(canMakePurchases());
+    
+    // Now that everything is ready, process any queued transactions
+    [_iapManager processQueuedTransactions];
 }
 
 void AppleAppStoreBackend::registerProduct(AbstractProduct * product)
