@@ -3,7 +3,9 @@
 
 AbstractProduct::AbstractProduct(QObject * parent) : QObject(parent)
 {
-    connect(this, &AbstractProduct::identifierChanged, this, &AbstractProduct::registerInStore);
+    connect(this, &AbstractProduct::identifierChanged, this, &AbstractProduct::updateIsReadyForRegister);
+    connect(this, &AbstractProduct::productTypeChanged, this, &AbstractProduct::updateIsReadyForRegister);
+    connect(this, &AbstractProduct::isReadyForRegisterChanged, this, &AbstractProduct::registerInStore);
 }
 
 AbstractStoreBackend * AbstractProduct::findStoreBackend() const
@@ -108,6 +110,16 @@ void AbstractProduct::registerInStore()
     store->registerProduct(this);
 }
 
+void AbstractProduct::updateIsReadyForRegister()
+{
+    bool newReadyState = (_productType != ProductType::None) && (!_identifier.isEmpty());
+
+    if (_isReadyForRegister == newReadyState)
+        return;
+
+    _isReadyForRegister = newReadyState;
+    emit isReadyForRegisterChanged();
+}
 
 void AbstractProduct::purchase()
 {
