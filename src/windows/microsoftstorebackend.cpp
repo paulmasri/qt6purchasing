@@ -169,7 +169,8 @@ void MicrosoftStoreBackend::onProductQueried(AbstractProduct * product, bool suc
             if (storeType != product->productType()) {
                 qCritical() << "Product type mismatch!" << product->identifier() 
                             << "Microsoft Store ID:" << productData["storeId"].toString()
-                            << "Expected:" << (product->productType() == AbstractProduct::Consumable ? "Consumable" : "Unlockable")
+                            << "Expected:" << (product->productType() == AbstractProduct::Consumable ? "Consumable" :
+                                             product->productType() == AbstractProduct::Unlockable ? "Unlockable" : "None")
                             << "Store reports:" << productKind;
                 product->setStatus(AbstractProduct::IncorrectProductType);
                 return;

@@ -12,7 +12,8 @@ AbstractStoreBackend::AbstractStoreBackend(QObject * parent) : QObject(parent)
             qDebug() << "Connected to store";
             qDebug() << "Found" << _products.size() << "product(s) awaiting registration";
             for (AbstractProduct * product : _products) {
-                product->registerInStore();
+                if (product->isReadyForRegister())
+                    product->registerInStore();
             }
         } else {
             qDebug() << "Disconnected from store";

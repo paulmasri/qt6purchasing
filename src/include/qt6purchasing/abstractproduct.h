@@ -28,6 +28,7 @@ class AbstractProduct : public QObject
 
 public:
     enum ProductType {
+        None,
         Consumable,
         Unlockable
     };
@@ -48,6 +49,7 @@ public:
     ProductType productType() const { return _productType; }
     QString title() const { return _title; }
     QString microsoftStoreId() const { return _microsoftStoreId; }
+    bool isReadyForRegister() const { return _isReadyForRegister; }
 
     void setIdentifier(const QString &value);
     void setProductType(ProductType type);
@@ -65,15 +67,18 @@ protected:
     explicit AbstractProduct(QObject * parent = nullptr);
 
     ProductStatus _status = ProductStatus::Uninitialized;
-    QString _identifier;
-    QString _description;
-    QString _price;
-    ProductType _productType;
-    QString _title;
-    QString _microsoftStoreId;
+    QString _identifier = QString();
+    QString _description = QString();
+    QString _price = QString();
+    ProductType _productType = ProductType::None;
+    QString _title = QString();
+    QString _microsoftStoreId = QString();
 
 private:
     AbstractStoreBackend * findStoreBackend() const;
+    void updateIsReadyForRegister();
+
+    bool _isReadyForRegister = false;
 
 signals:
     void statusChanged();
@@ -83,6 +88,7 @@ signals:
     void productTypeChanged();
     void titleChanged();
     void microsoftStoreIdChanged();
+    void isReadyForRegisterChanged();
 
     void purchaseSucceeded(Transaction transaction);
     void purchasePending(Transaction transaction);
