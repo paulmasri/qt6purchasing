@@ -194,7 +194,7 @@ AppleAppStoreBackend * AppleAppStoreBackend::s_currentInstance = nullptr;
     }
 
     qDebug() << "StoreKit: Received product response; num valid products:" << response.products.count <<
-                "num invalid product identifiers count:" << response.invalidProductIdentifiers.count;
+                "; num invalid product identifiers:" << response.invalidProductIdentifiers.count;
     if (response.invalidProductIdentifiers.count > 0) {
         for (NSString *invalidId in response.invalidProductIdentifiers) {
             qDebug() << "StoreKit: Invalid product ID:" << QString::fromNSString(invalidId);
