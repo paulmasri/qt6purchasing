@@ -168,9 +168,19 @@ AppleAppStoreBackend * AppleAppStoreBackend::s_currentInstance = nullptr;
 
 -(void)requestProductData:(NSString *)identifier
 {
+    qDebug() << "StoreKit: Requesting product data for identifier:" << QString::fromNSString(identifier);
+
     NSSet<NSString *> * productId = [NSSet<NSString *> setWithObject:identifier];
     SKProductsRequest * productsRequest = [[SKProductsRequest alloc] initWithProductIdentifiers:productId];
     productsRequest.delegate = self;
+
+    // Check if we're using StoreKit testing
+    #if TARGET_OS_SIMULATOR
+        qDebug() << "StoreKit: Running in iOS Simulator";
+    #else
+        qDebug() << "StoreKit: Running on physical device";
+    #endif
+
     [productsRequest start];
 }
 
@@ -181,6 +191,19 @@ AppleAppStoreBackend * AppleAppStoreBackend::s_currentInstance = nullptr;
     if (!backend) {
         qCritical() << "Apple Store product callback received but backend instance is null";
         return;
+    }
+
+    qDebug() << "StoreKit: Received product response; num valid products:" << response.products.count <<
+                "num invalid product identifiers count:" << response.invalidProductIdentifiers.count;
+    if (response.invalidProductIdentifiers.count > 0) {
+        for (NSString *invalidId in response.invalidProductIdentifiers) {
+            qDebug() << "StoreKit: Invalid product ID:" << QString::fromNSString(invalidId);
+        }
+    }
+    if (response.products.count > 0) {
+        for (SKProduct *product in response.products) {
+            qDebug() << "StoreKit: Valid product found:" << QString::fromNSString(product.productIdentifier);
+        }
     }
 
     NSArray<SKProduct *> * skProducts = response.products;
