@@ -255,9 +255,7 @@ AppleAppStoreBackend * AppleAppStoreBackend::s_currentInstance = nullptr;
         switch (static_cast<AppleAppStoreTransactionState::State>(skTransaction.transactionState)) {
         case AppleAppStoreTransactionState::Purchasing:
             {
-                qDebug() << "iOS: Transaction moving to Purchasing state (Ask to Buy approved or payment processing)";
-                auto transaction = transactionFromSKTransaction(skTransaction);
-                QMetaObject::invokeMethod(backend, "purchasePending", Qt::AutoConnection, Q_ARG(Transaction, transaction));
+                qDebug() << "iOS: Transaction moving to Purchasing state (user presented with iOS payment dialog)";
             }
             break;
         case AppleAppStoreTransactionState::Purchased:
