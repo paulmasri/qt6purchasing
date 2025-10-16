@@ -38,6 +38,7 @@ public:
     Q_CLASSINFO("DefaultProperty", "productsQml")
     Q_PROPERTY(bool connected READ isConnected NOTIFY connectedChanged FINAL)
     Q_PROPERTY(bool canMakePurchases READ canMakePurchases NOTIFY canMakePurchasesChanged FINAL)
+    Q_PROPERTY(bool processingEnabled READ processingEnabled NOTIFY processingEnabledChanged FINAL)
 
 public:
     QQmlListProperty<AbstractProduct> productsQml();
@@ -45,6 +46,7 @@ public:
     AbstractProduct * product(const QString &identifier);
     bool isConnected() const { return _connected; }
     virtual bool canMakePurchases() const = 0;
+    bool processingEnabled() const { return _processingEnabled; }
 
     virtual void startConnection() = 0;
     virtual void registerProduct(AbstractProduct * product) = 0;
@@ -54,11 +56,15 @@ public:
     Q_INVOKABLE virtual void restorePurchases() = 0;
     Q_INVOKABLE virtual void finalize(Transaction transaction);
 
+    // Transaction processing control (cross-platform defensive programming)
+    Q_INVOKABLE virtual void enableProcessing();
+
 protected:
     explicit AbstractStoreBackend(QObject * parent = nullptr);
     QList<AbstractProduct *> _products;
     bool _connected = false;
     bool _canMakePurchases = false;
+    bool _processingEnabled = false;
 
     void setConnected(bool connected);
     void setCanMakePurchases(bool canMakePurchases);
@@ -73,6 +79,7 @@ signals:
     void productsChanged();
     void connectedChanged();
     void canMakePurchasesChanged();
+    void processingEnabledChanged();
 
     void productRegistered(AbstractProduct * product);
     void purchaseSucceeded(Transaction transaction);

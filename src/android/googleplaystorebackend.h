@@ -49,7 +49,16 @@ public:
     void restorePurchases() override;
     bool canMakePurchases() const override;
 
+    // Transaction processing control
+    void enableProcessing() override;
+
 private:
+    void processQueuedTransactions();
+
+    // Queued transaction data
+    QList<QJsonObject> _queuedPurchaseSucceeded;
+    QList<QJsonObject> _queuedPurchaseRestored;
+    QList<QJsonObject> _queuedPurchasePending;
     static PurchaseError mapBillingResponseToPurchaseError(int billingResponseCode);
     static QString getBillingResponseMessage(int billingResponseCode);
 

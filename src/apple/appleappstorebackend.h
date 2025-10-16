@@ -21,9 +21,16 @@ public:
     void restorePurchases() override;
     bool canMakePurchases() const override;
 
-    static void initializeEarly();
+    // Transaction processing control
+    void enableProcessing() override;
+
+    // Static early initialization from main.cpp (before any instances exist)
+    static void initializeEarlyTransactionQueue();
 
     static AppleAppStoreBackend * s_currentInstance;
+
+    // Internal access for EarlyTransactionObserver
+    InAppPurchaseManager * iapManager() const { return _iapManager; }
 
 private:
     

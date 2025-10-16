@@ -192,9 +192,13 @@ The library automatically handles consumable fulfillment for Microsoft Store. Wh
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-## iOS Early Initialization (Critical)
+## Cross-Platform Transaction Processing Control (Critical)
 
-On iOS, you **must** call the early initialization in your `main()` function before creating the QML engine:
+All platforms require controlled transaction processing to prevent race conditions between transaction arrival and product registration. This uses a two-phase approach:
+
+### Phase 1: Early Initialization in main.cpp (iOS Only)
+
+iOS requires early transaction observer initialization to capture startup transactions:
 
 ```cpp
 #include <QGuiApplication>
@@ -210,7 +214,7 @@ int main(int argc, char *argv[])
     
 #ifdef Q_OS_IOS
     // Critical: Initialize iOS IAP observer before QML engine creation
-    AppleAppStoreBackend::initializeEarly();
+    AppleAppStoreBackend::initializeEarlyTransactionQueue();
 #endif
     
     QQmlApplicationEngine engine;
@@ -219,11 +223,93 @@ int main(int argc, char *argv[])
 }
 ```
 
-**Why this is required:**
-- Apple requires transaction observers to be added at app launch in `application(_:didFinishLaunchingWithOptions:)`
-- Qt/QML creates the Store component later during QML instantiation
-- Without early initialization, transactions that occur during app startup can be lost
-- The early observer queues transactions until the full backend is ready
+**Note**: Android and Windows do not require early initialization as they handle transactions differently.
+
+### Phase 2: Enable Transaction Processing in QML (All Platforms)
+
+After all products are added to your Store, call `enableProcessing()` to allow transaction processing:
+
+```qml
+Store {
+    id: store
+
+    // Cross-platform transaction processing state
+    property bool processingEnabled: false
+    readonly property int expectedProductCount: 5  // Update with your actual product count
+
+    Product { identifier: "product1"; type: Product.Consumable
+        onStatusChanged: store.tryEnableProcessing()
+    }
+    Product { identifier: "product2"; type: Product.Unlockable
+        onStatusChanged: store.tryEnableProcessing()
+    }
+    // ... more products
+
+    // Transaction processing control functions
+    function isReadyForProcessing() {
+        return connected && getRegisteredProductCount() >= expectedProductCount
+    }
+
+    function getRegisteredProductCount() {
+        var count = 0
+        for (var i = 0; i < productsQml.length; i++) {
+            var product = productsQml[i]
+            if (product.status === Product.Registered || product.status === Product.Unknown) {
+                count++
+            }
+        }
+        return count
+    }
+
+    function tryEnableProcessing() {
+        if (processingEnabled) return
+
+        if (isReadyForProcessing()) {
+            enableProcessingNow()
+        }
+    }
+
+    function enableProcessingNow() {
+        if (processingEnabled) return
+
+        console.log("Enabling transaction processing - all products ready")
+        processingEnabled = true
+        enableProcessing()  // Call the library method
+    }
+
+    // Safety fallback timer (5 seconds)
+    Timer {
+        interval: 5000
+        running: !processingEnabled
+        onTriggered: {
+            if (!processingEnabled) {
+                console.warn("Timeout waiting for products - enabling processing anyway")
+                enableProcessingNow()
+            }
+        }
+    }
+
+    Component.onCompleted: tryEnableProcessing()
+    onConnectedChanged: if (connected) tryEnableProcessing()
+}
+```
+
+**Why this controlled processing approach is required:**
+
+**Cross-Platform Race Condition Prevention:**
+- **iOS**: Early transactions from app startup need to be queued until products are ready
+- **Android**: Google Play callbacks can arrive before product registration completes
+- **Windows**: Microsoft Store completion handlers can fire before product validation
+
+**QML Component Timing Issues:**
+- QML Component.onCompleted execution order is officially undefined
+- Product registration happens asynchronously after store connection
+- Transaction signals emitted before products exist cause "Failed to map purchase to product" errors
+
+**Platform-Specific Behavior:**
+- **iOS**: Queues early transactions, processes when enabled
+- **Android**: Queues Google Play callbacks, processes when enabled
+- **Windows**: Queues Store completion events, processes when enabled
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 

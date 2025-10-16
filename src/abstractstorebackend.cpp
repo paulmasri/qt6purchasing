@@ -139,6 +139,12 @@ void AbstractStoreBackend::finalize(Transaction transaction)
     consumePurchase(transaction);
 }
 
+void AbstractStoreBackend::enableProcessing() {
+    if (_processingEnabled) return;
+    _processingEnabled = true;
+    emit processingEnabledChanged();
+}
+
 // Static QQmlListProperty accessors
 void AbstractStoreBackend::appendProduct(QQmlListProperty<AbstractProduct> *list, AbstractProduct *product)
 {
