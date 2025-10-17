@@ -383,6 +383,8 @@ bool AppleAppStoreBackend::canMakePurchases() const
 
 void AppleAppStoreBackend::enableProcessing()
 {
+    if (processingEnabled())
+        return
     AbstractStoreBackend::enableProcessing();
 
     if (_iapManager) {

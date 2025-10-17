@@ -357,6 +357,8 @@ bool GooglePlayStoreBackend::canMakePurchases() const
 
 void GooglePlayStoreBackend::enableProcessing()
 {
+    if (processingEnabled())
+        return
     AbstractStoreBackend::enableProcessing();
 
     qDebug() << "Android: Processing enabled - processing queued transactions";
