@@ -459,7 +459,8 @@ QString MicrosoftStoreBackend::getWindowsErrorMessage(uint32_t statusCode)
 void MicrosoftStoreBackend::enableProcessing()
 {
     if (processingEnabled())
-        return
+        return;
+
     AbstractStoreBackend::enableProcessing();
 
     qDebug() << "Windows: Processing enabled - processing queued transactions";
