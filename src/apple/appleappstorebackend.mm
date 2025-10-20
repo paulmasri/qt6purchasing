@@ -79,22 +79,24 @@ static QString getStoreKitErrorMessage(int errorCode)
 
 AppleAppStoreBackend * AppleAppStoreBackend::s_currentInstance = nullptr;
 
-// Early observer that queues transactions until full backend is ready
-@interface EarlyTransactionObserver : NSObject <SKPaymentTransactionObserver>
+// Observer that handles all transactions for the app lifetime
+@interface TransactionObserver : NSObject <SKPaymentTransactionObserver>
 {
     NSMutableArray<SKPaymentTransaction *> *queuedTransactions;
 }
 
-@property (class, readonly) EarlyTransactionObserver *shared;
+@property (class, readonly) TransactionObserver *shared;
 -(NSArray<SKPaymentTransaction *> *)getQueuedTransactions;
 -(void)clearQueuedTransactions;
+-(void)processTransactions:(NSArray<SKPaymentTransaction *> *)skTransactions;
+-(void)processQueuedTransactions;
 
 @end
 
-@implementation EarlyTransactionObserver
+@implementation TransactionObserver
 
-+ (EarlyTransactionObserver *)shared {
-    static EarlyTransactionObserver *sharedInstance = nil;
++ (TransactionObserver *)shared {
+    static TransactionObserver *sharedInstance = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         sharedInstance = [[self alloc] init];
@@ -118,19 +120,95 @@ AppleAppStoreBackend * AppleAppStoreBackend::s_currentInstance = nullptr;
 }
 
 -(void)paymentQueue:(SKPaymentQueue *)queue updatedTransactions:(NSArray<SKPaymentTransaction *> *)transactions {
-    qDebug() << "Early observer received" << transactions.count << "transactions - queueing until processing enabled";
-    [queuedTransactions addObjectsFromArray:transactions];
+    AppleAppStoreBackend* backend = AppleAppStoreBackend::s_currentInstance;
+    qDebug() << "TransactionObserver received" << transactions.count << "transactions";
+
+    if (!backend) {
+        qDebug() << "No backend instance available - queueing transactions";
+        [queuedTransactions addObjectsFromArray:transactions];
+        return;
+    }
+
+    if (!backend->processingEnabled()) {
+        qDebug() << "Processing not enabled - queueing transactions";
+        [queuedTransactions addObjectsFromArray:transactions];
+        return;
+    }
+
+    // Process transactions immediately
+    qDebug() << "Processing transactions immediately";
+    [self processTransactions:transactions];
+}
+
+-(void)processTransactions:(NSArray<SKPaymentTransaction *> *)skTransactions {
+    AppleAppStoreBackend* backend = AppleAppStoreBackend::s_currentInstance;
+
+    qDebug() << "iOS: processing" << skTransactions.count << "transactions";
+    for (SKPaymentTransaction * skTransaction in skTransactions) {
+        qDebug() << "iOS: Processing transaction ID:" << QString::fromNSString(skTransaction.transactionIdentifier) << "state:" << skTransaction.transactionState << "product:" << QString::fromNSString(skTransaction.payment.productIdentifier);
+        switch (static_cast<AppleAppStoreTransactionState::State>(skTransaction.transactionState)) {
+        case AppleAppStoreTransactionState::Purchasing:
+            {
+                qDebug() << "iOS: Transaction moving to Purchasing state (user presented with iOS payment dialog)";
+            }
+            break;
+        case AppleAppStoreTransactionState::Purchased:
+            {
+                auto transaction = transactionFromSKTransaction(skTransaction);
+                QMetaObject::invokeMethod(backend, "purchaseSucceeded", Qt::AutoConnection, Q_ARG(Transaction, transaction));
+            }
+            break;
+        case AppleAppStoreTransactionState::Failed:
+            {
+                // Extract product ID from the transaction
+                QString productId = QString::fromNSString(skTransaction.payment.productIdentifier);
+                int errorCode = skTransaction.error.code;
+                AbstractStoreBackend::PurchaseError error = mapStoreKitErrorToPurchaseError(errorCode);
+                QString message = getStoreKitErrorMessage(errorCode);
+                QMetaObject::invokeMethod(backend, "purchaseFailed", Qt::AutoConnection,
+                    Q_ARG(QString, productId),
+                    Q_ARG(int, static_cast<int>(error)),
+                    Q_ARG(int, errorCode),
+                    Q_ARG(QString, message));
+            }
+            break;
+        case AppleAppStoreTransactionState::Restored:
+            {
+                auto transaction = transactionFromSKTransaction(skTransaction);
+                QMetaObject::invokeMethod(backend, "purchaseRestored", Qt::AutoConnection, Q_ARG(Transaction, transaction));
+            }
+            break;
+        case AppleAppStoreTransactionState::Deferred:
+            {
+                auto transaction = transactionFromSKTransaction(skTransaction);
+                QMetaObject::invokeMethod(backend, "purchasePending", Qt::AutoConnection, Q_ARG(Transaction, transaction));
+            }
+            break;
+        }
+    }
+}
+
+-(void)processQueuedTransactions {
+    AppleAppStoreBackend* backend = AppleAppStoreBackend::s_currentInstance;
+    if (!backend) {
+        qDebug() << "TransactionObserver: No backend available for processing queued transactions";
+        return;
+    }
+
+    if (queuedTransactions.count > 0) {
+        qDebug() << "TransactionObserver: Processing" << queuedTransactions.count << "queued transactions";
+        [self processTransactions:queuedTransactions];
+        [queuedTransactions removeAllObjects];
+    } else {
+        qDebug() << "TransactionObserver: No queued transactions to process";
+    }
 }
 
 @end
 
-@interface InAppPurchaseManager : NSObject <SKProductsRequestDelegate, SKPaymentTransactionObserver>
-{
-    NSMutableArray<SKPaymentTransaction *> *queuedTransactions;
-}
+@interface InAppPurchaseManager : NSObject <SKProductsRequestDelegate>
 
 -(id)init;
--(void)processQueuedTransactions;
 -(void)requestProductData:(NSString *)identifier;
 
 @end
@@ -139,35 +217,16 @@ AppleAppStoreBackend * AppleAppStoreBackend::s_currentInstance = nullptr;
 
 -(id)init {
     if (self = [super init]) {
-        // Inherit queued transactions from early observer
-        queuedTransactions = [[[EarlyTransactionObserver shared] getQueuedTransactions] mutableCopy];
-        [[EarlyTransactionObserver shared] clearQueuedTransactions];
-
-        // Remove early observer and add ourselves
-        [[SKPaymentQueue defaultQueue] removeTransactionObserver:[EarlyTransactionObserver shared]];
-        [[SKPaymentQueue defaultQueue] addTransactionObserver:self];
-
-        qDebug() << "InAppPurchaseManager: Inherited" << queuedTransactions.count << "queued transactions from early observer";
+        qDebug() << "InAppPurchaseManager: Initialized for product queries only";
     }
     return self;
 }
 
 -(void)dealloc
 {
-    [[SKPaymentQueue defaultQueue] removeTransactionObserver:self];
+    // No transaction observer to remove
 }
 
--(void)processQueuedTransactions
-{
-    // Process any queued transactions
-    if (queuedTransactions.count > 0) {
-        qDebug() << "Processing" << queuedTransactions.count << "queued transactions";
-        [self paymentQueue:[SKPaymentQueue defaultQueue] updatedTransactions:queuedTransactions];
-        [queuedTransactions removeAllObjects];
-    } else {
-        qDebug() << "No queued transactions to process";
-    }
-}
 
 -(void)requestProductData:(NSString *)identifier
 {
@@ -241,69 +300,6 @@ AppleAppStoreBackend * AppleAppStoreBackend::s_currentInstance = nullptr;
     }
 }
 
-//SKPaymentTransactionObserver
-- (void)paymentQueue:(SKPaymentQueue *)queue updatedTransactions:(NSArray<SKPaymentTransaction *> *)skTransactions
-{
-    AppleAppStoreBackend* backend = AppleAppStoreBackend::s_currentInstance;
-    if (!backend) {
-        qCritical() << "Apple Store transaction callback received but backend instance is null - transactions will be lost";
-        return;
-    }
-
-    // Check if processing is enabled
-    if (!backend->processingEnabled()) {
-        qDebug() << "iOS: Received" << skTransactions.count << "transactions but processing not enabled - queueing";
-        [queuedTransactions addObjectsFromArray:skTransactions];
-        return;
-    }
-
-    Q_UNUSED(queue);
-
-    qDebug() << "iOS: paymentQueue:updatedTransactions called with" << skTransactions.count << "transactions";
-    for (SKPaymentTransaction * skTransaction in skTransactions) {
-        qDebug() << "iOS: Processing transaction ID:" << QString::fromNSString(skTransaction.transactionIdentifier) << "state:" << skTransaction.transactionState << "product:" << QString::fromNSString(skTransaction.payment.productIdentifier);
-        switch (static_cast<AppleAppStoreTransactionState::State>(skTransaction.transactionState)) {
-        case AppleAppStoreTransactionState::Purchasing:
-            {
-                qDebug() << "iOS: Transaction moving to Purchasing state (user presented with iOS payment dialog)";
-            }
-            break;
-        case AppleAppStoreTransactionState::Purchased:
-            {
-                auto transaction = transactionFromSKTransaction(skTransaction);
-                QMetaObject::invokeMethod(backend, "purchaseSucceeded", Qt::AutoConnection, Q_ARG(Transaction, transaction));
-            }
-            break;
-        case AppleAppStoreTransactionState::Failed:
-            {
-                // Extract product ID from the transaction
-                QString productId = QString::fromNSString(skTransaction.payment.productIdentifier);
-                int errorCode = skTransaction.error.code;
-                AbstractStoreBackend::PurchaseError error = mapStoreKitErrorToPurchaseError(errorCode);
-                QString message = getStoreKitErrorMessage(errorCode);
-                QMetaObject::invokeMethod(backend, "purchaseFailed", Qt::AutoConnection, 
-                    Q_ARG(QString, productId),
-                    Q_ARG(int, static_cast<int>(error)), 
-                    Q_ARG(int, errorCode), 
-                    Q_ARG(QString, message));
-            }
-            break;
-        case AppleAppStoreTransactionState::Restored:
-            {
-                auto transaction = transactionFromSKTransaction(skTransaction);
-                QMetaObject::invokeMethod(backend, "purchaseRestored", Qt::AutoConnection, Q_ARG(Transaction, transaction));
-            }
-            break;
-        case AppleAppStoreTransactionState::Deferred:
-            {
-                auto transaction = transactionFromSKTransaction(skTransaction);
-                QMetaObject::invokeMethod(backend, "purchasePending", Qt::AutoConnection, Q_ARG(Transaction, transaction));
-            }
-            break;
-        }
-    }
-}
-
 @end
 
 AppleAppStoreBackend::AppleAppStoreBackend(QObject * parent) : AbstractStoreBackend(parent)
@@ -323,8 +319,8 @@ AppleAppStoreBackend::~AppleAppStoreBackend()
 // Static version for early initialization from main.cpp
 void AppleAppStoreBackend::initializeEarlyTransactionQueue()
 {
-    qDebug() << "iOS IAP: Adding early transaction observer to catch transactions at app startup";
-    [[SKPaymentQueue defaultQueue] addTransactionObserver:[EarlyTransactionObserver shared]];
+    qDebug() << "iOS IAP: Adding transaction observer early to catch pending transactions";
+    [[SKPaymentQueue defaultQueue] addTransactionObserver:[TransactionObserver shared]];
 }
 
 void AppleAppStoreBackend::startConnection()
@@ -388,10 +384,6 @@ void AppleAppStoreBackend::enableProcessing()
 
     AbstractStoreBackend::enableProcessing();
 
-    if (_iapManager) {
-        qDebug() << "iOS: Processing enabled - processing queued transactions";
-        [_iapManager processQueuedTransactions];
-    } else {
-        qWarning() << "iOS: Processing enabled but IAP manager not initialized";
-    }
+    qDebug() << "iOS: Processing enabled - processing queued transactions";
+    [[TransactionObserver shared] processQueuedTransactions];
 }
