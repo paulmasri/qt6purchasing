@@ -24,6 +24,9 @@ public:
     void restorePurchases() override;
     bool canMakePurchases() const override;
 
+    // Transaction processing control
+    void enableProcessing() override;
+
     static MicrosoftStoreBackend * s_currentInstance;
 
 private slots:
@@ -35,6 +38,19 @@ private slots:
 private:
     HWND _hwnd = nullptr;
     QMap<QString, AbstractProduct *> _registeredProducts; // Track products by identifier
+
+    void processQueuedTransactions();
+
+    // Queued transaction data
+    struct QueuedPurchase {
+        AbstractProduct* product;
+        winrt::Windows::Services::Store::StorePurchaseStatus status;
+    };
+    struct QueuedRestore {
+        QList<QVariantMap> restoredProducts;
+    };
+    QList<QueuedPurchase> _queuedPurchases;
+    QList<QueuedRestore> _queuedRestores;
 
     void initializeWindowHandle();
     void queryAllProducts();

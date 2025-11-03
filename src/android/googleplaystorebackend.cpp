@@ -198,6 +198,12 @@ bool GooglePlayStoreBackend::canMakePurchases() const
     QJsonObject json = QJsonDocument::fromJson(jsonCStr).object();
     env->ReleaseStringUTFChars(message, jsonCStr);
 
+    if (!backend->processingEnabled()) {
+        qDebug() << "Android: purchaseSucceeded received but processing not enabled - queueing";
+        backend->_queuedPurchaseSucceeded.append(json);
+        return;
+    }
+
     auto transaction = transactionFromJson(json);
     emit backend->purchaseSucceeded(transaction);
 }
@@ -213,6 +219,12 @@ bool GooglePlayStoreBackend::canMakePurchases() const
     const char* jsonCStr = env->GetStringUTFChars(message, nullptr);
     QJsonObject json = QJsonDocument::fromJson(jsonCStr).object();
     env->ReleaseStringUTFChars(message, jsonCStr);
+
+    if (!backend->processingEnabled()) {
+        qDebug() << "Android: purchasePending received but processing not enabled - queueing";
+        backend->_queuedPurchasePending.append(json);
+        return;
+    }
 
     auto transaction = transactionFromJson(json);
     qDebug() << "Android purchase pending for product:" << transaction.productId;
@@ -238,6 +250,12 @@ bool GooglePlayStoreBackend::canMakePurchases() const
     const char* jsonCStr = env->GetStringUTFChars(message, nullptr);
     QJsonObject json = QJsonDocument::fromJson(jsonCStr).object();
     env->ReleaseStringUTFChars(message, jsonCStr);
+
+    if (!backend->processingEnabled()) {
+        qDebug() << "Android: purchaseRestored received but processing not enabled - queueing";
+        backend->_queuedPurchaseRestored.append(json);
+        return;
+    }
 
     auto transaction = transactionFromJson(json);
     emit backend->purchaseRestored(transaction);
@@ -335,4 +353,50 @@ bool GooglePlayStoreBackend::canMakePurchases() const
         default:
             return QString("Unknown billing response code: %1").arg(billingResponseCode);
     }
+}
+
+void GooglePlayStoreBackend::enableProcessing()
+{
+    if (processingEnabled())
+        return;
+
+    AbstractStoreBackend::enableProcessing();
+
+    qDebug() << "Android: Processing enabled - processing queued transactions";
+    processQueuedTransactions();
+}
+
+void GooglePlayStoreBackend::processQueuedTransactions()
+{
+    qDebug() << "Android: Processing" << _queuedPurchaseSucceeded.size() << "queued purchaseSucceeded,"
+             << _queuedPurchaseRestored.size() << "queued purchaseRestored,"
+             << _queuedPurchasePending.size() << "queued purchasePending";
+
+    // Process queued purchase succeeded
+    for (const auto& json : _queuedPurchaseSucceeded) {
+        auto transaction = transactionFromJson(json);
+        emit purchaseSucceeded(transaction);
+    }
+    _queuedPurchaseSucceeded.clear();
+
+    // Process queued purchase restored
+    for (const auto& json : _queuedPurchaseRestored) {
+        auto transaction = transactionFromJson(json);
+        emit purchaseRestored(transaction);
+    }
+    _queuedPurchaseRestored.clear();
+
+    // Process queued purchase pending
+    for (const auto& json : _queuedPurchasePending) {
+        auto transaction = transactionFromJson(json);
+        qDebug() << "Processing queued Android purchase pending for product:" << transaction.productId;
+
+        AbstractProduct * product = this->product(transaction.productId);
+        if (product) {
+            emit purchasePending(transaction);
+        } else {
+            qWarning() << "Could not find product for queued pending purchase:" << transaction.productId;
+        }
+    }
+    _queuedPurchasePending.clear();
 }

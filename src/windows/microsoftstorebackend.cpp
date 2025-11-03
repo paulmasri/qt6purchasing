@@ -213,7 +213,7 @@ void MicrosoftStoreBackend::purchaseProduct(AbstractProduct * product)
         emit purchaseFailed(productId, static_cast<int>(error), UNKNOWN_ERROR, message);
         return;
     }
-    
+
     // Use microsoftStoreId if available
     QString productId = product->identifier();
 #ifdef Q_OS_WIN
@@ -222,7 +222,7 @@ void MicrosoftStoreBackend::purchaseProduct(AbstractProduct * product)
         productId = microsoftStoreId;
     }
 #endif
-    
+
     auto* worker = new StorePurchaseWorker(productId, _hwnd);
     auto* thread = new QThread(this);
     
@@ -235,15 +235,21 @@ void MicrosoftStoreBackend::purchaseProduct(AbstractProduct * product)
     connect(worker, &StorePurchaseWorker::finished, thread, &QThread::quit);
     connect(thread, &QThread::finished, thread, &QThread::deleteLater);
     connect(worker, &StorePurchaseWorker::finished, worker, &StorePurchaseWorker::deleteLater);
-    
+
     thread->start();
 }
 
 void MicrosoftStoreBackend::onPurchaseComplete(AbstractProduct * product, StorePurchaseStatus status)
 {
     qDebug() << "onPurchaseComplete: Backend thread:" << this->thread() << "Current thread:" << QThread::currentThread();
+
+    if (!processingEnabled()) {
+        qDebug() << "Windows: onPurchaseComplete received but processing not enabled - queueing";
+        _queuedPurchases.append({product, status});
+        return;
+    }
+
     if (status == StorePurchaseStatus::Succeeded) {
-        // Create transaction data for success
         // Create transaction data for success
         Transaction transaction;
         transaction.orderId = QString("ms_%1_%2").arg(product->identifier()).arg(QDateTime::currentMSecsSinceEpoch());
@@ -357,11 +363,17 @@ void MicrosoftStoreBackend::onRestoreComplete(const QList<QVariantMap> &restored
 {
     qDebug() << "onRestoreComplete: Backend thread:" << this->thread() << "Current thread:" << QThread::currentThread();
     qDebug() << "Restore complete, found" << restoredProducts.size() << "owned products";
-    
+
+    if (!processingEnabled()) {
+        qDebug() << "Windows: onRestoreComplete received but processing not enabled - queueing";
+        _queuedRestores.append({restoredProducts});
+        return;
+    }
+
     for (const auto& productData : restoredProducts) {
         QString msStoreId = productData["productId"].toString();
         QString orderId = QString("ms_restored_%1").arg(msStoreId);
-        
+
         // Find the Qt identifier by searching registered products
         QString qtIdentifier;
         for (AbstractProduct * product : products()) {
@@ -370,7 +382,7 @@ void MicrosoftStoreBackend::onRestoreComplete(const QList<QVariantMap> &restored
                 break;
             }
         }
-        
+
         if (!qtIdentifier.isEmpty()) {
             Transaction transaction;
             transaction.orderId = orderId;
@@ -442,4 +454,64 @@ QString MicrosoftStoreBackend::getWindowsErrorMessage(uint32_t statusCode)
         default:
             return QString("Unknown Windows StorePurchaseStatus: %1").arg(statusCode);
     }
+}
+
+void MicrosoftStoreBackend::enableProcessing()
+{
+    if (processingEnabled())
+        return;
+
+    AbstractStoreBackend::enableProcessing();
+
+    qDebug() << "Windows: Processing enabled - processing queued transactions";
+    processQueuedTransactions();
+}
+
+void MicrosoftStoreBackend::processQueuedTransactions()
+{
+    qDebug() << "Windows: Processing" << _queuedPurchases.size() << "queued purchases,"
+             << _queuedRestores.size() << "queued restores";
+
+    // Process queued purchases
+    for (const auto& queuedPurchase : _queuedPurchases) {
+        if (queuedPurchase.status == StorePurchaseStatus::Succeeded) {
+            Transaction transaction;
+            transaction.orderId = QString("ms_%1_%2").arg(queuedPurchase.product->identifier()).arg(QDateTime::currentMSecsSinceEpoch());
+            transaction.productId = queuedPurchase.product->identifier();
+            emit purchaseSucceeded(transaction);
+        } else {
+            PurchaseError error = mapWindowsErrorToPurchaseError(static_cast<uint32_t>(queuedPurchase.status));
+            QString message = getWindowsErrorMessage(static_cast<uint32_t>(queuedPurchase.status));
+            QString productId = queuedPurchase.product->identifier();
+            emit purchaseFailed(productId, static_cast<int>(error), static_cast<uint32_t>(queuedPurchase.status), message);
+        }
+    }
+    _queuedPurchases.clear();
+
+    // Process queued restores
+    for (const auto& queuedRestore : _queuedRestores) {
+        for (const auto& productData : queuedRestore.restoredProducts) {
+            QString msStoreId = productData["productId"].toString();
+            QString orderId = QString("ms_restored_%1").arg(msStoreId);
+
+            QString qtIdentifier;
+            for (AbstractProduct * product : products()) {
+                if (product->microsoftStoreId() == msStoreId) {
+                    qtIdentifier = product->identifier();
+                    break;
+                }
+            }
+
+            if (!qtIdentifier.isEmpty()) {
+                Transaction transaction;
+                transaction.orderId = orderId;
+                transaction.productId = qtIdentifier;
+                emit purchaseRestored(transaction);
+                qDebug() << "Processing queued restore: MS Store ID" << msStoreId << "-> Qt ID" << qtIdentifier;
+            } else {
+                qWarning() << "Could not find Qt product for queued restore Microsoft Store ID:" << msStoreId;
+            }
+        }
+    }
+    _queuedRestores.clear();
 }
