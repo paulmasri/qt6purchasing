@@ -133,6 +133,16 @@ void AbstractStoreBackend::setCanMakePurchases(bool canMakePurchases)
     qDebug() << "Store canMakePurchases status changed to" << (_canMakePurchases ? "enabled" : "disabled");
 }
 
+void AbstractStoreBackend::setIsRestoringPurchases(bool restoring)
+{
+    if (_isRestoringPurchases == restoring)
+        return;
+
+    _isRestoringPurchases = restoring;
+    emit isRestoringPurchasesChanged();
+    qDebug() << "Store isRestoringPurchases status changed to" << (_isRestoringPurchases ? "true" : "false");
+}
+
 void AbstractStoreBackend::finalize(Transaction transaction)
 {
     qDebug() << "Store: Finalizing transaction" << transaction.orderId;
