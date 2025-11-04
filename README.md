@@ -390,6 +390,44 @@ Store {
    - **Durables/Unlockables** complete their transaction acknowledgment
    - Platform backends handle the finalization appropriately for each product type
 
+## Monitoring Restore Progress and Errors
+
+The Store component provides signals to monitor restore operations and handle errors:
+
+```qml
+Qt6Purchasing.Store {
+    id: iapStore
+
+    onRestorePurchasesSucceeded: (count) => {
+        console.log("Restore completed successfully. Count:", count)
+        if (count === 0) {
+            console.log("No previous purchases found")
+        } else {
+            console.log(count + " purchase(s) restored")
+        }
+    }
+
+    onRestorePurchasesFailed: (error, platformCode, message) => {
+        console.error("Restore failed:", message)
+        console.error("Error type:", error, "Platform code:", platformCode)
+    }
+
+    // Individual restored purchases still arrive via Product.onPurchaseRestored
+    // Handle them in your Product's onPurchaseRestored handler
+}
+```
+
+**Important notes:**
+- `restorePurchasesSucceeded(count)` is emitted when restore completes, even if count is 0
+- Individual restored purchases are delivered via `Product.onPurchaseRestored` before the success signal
+- `isRestoringPurchases` property tracks restore operation state
+- The Store automatically prevents concurrent restore operations
+
+**Platform-specific restore behaviors:**
+- **iOS**: Calls `SKPaymentQueue.restoreCompletedTransactions()`. Reports success when restore completes, even if 0 purchases found.
+- **Android**: Calls `queryPurchasesAsync()`. Failure indicates billing service issue (network, disconnected service, etc.).
+- **Windows**: Calls `GetUserCollectionAsync()`. Queries user's product collection from Microsoft Store.
+
 
 ## Edge Cases and Platform-Specific Behaviors
 
@@ -468,16 +506,27 @@ Understanding these scenarios is critical for robust production deployment:
 **Developer action**: Handle `onPurchaseFailed` with service-related errors gracefully. Show user-friendly "store temporarily unavailable" messages. Implement retry mechanisms with reasonable delays.
 
 ### 7. Restore Purchase Edge Cases
-**What happens**: Restore purchases doesn't return all expected results due to account or platform limitations.
+**What happens**: Restore purchases doesn't return all expected results due to account, platform, or network limitations.
 
 **Platform notes**:
-- **iOS**: Cross-device restore requires same Apple ID and account mismatches prevent some restores.
-- **Android**: Restore works via Google account and purchase history is tied to specific Google account.
-- **Windows**: Microsoft account-based restore with purchases tied to specific Microsoft account and device family.
+- **iOS**: Cross-device restore requires same Apple ID and account mismatches prevent some restores. Network failures during restore trigger `restorePurchasesFailed`.
+- **Android**: Restore works via Google account and purchase history is tied to specific Google account. Billing service disconnection or network issues cause restore failures.
+- **Windows**: Microsoft account-based restore with purchases tied to specific Microsoft account and device family. Store API errors are reported via `restorePurchasesFailed`.
 
-**Library behaviour**: Calls platform restore APIs and delivers all available restored purchases via `purchaseRestored` signals. Logs warnings for purchases that cannot be mapped to registered products.
+**Library behaviour**:
+- Calls platform restore APIs and delivers all available restored purchases via `purchaseRestored` signals
+- Emits `restorePurchasesSucceeded(count)` when restore completes successfully (count may be 0)
+- Emits `restorePurchasesFailed(error, platformCode, message)` on errors (network, authentication, service unavailable, etc.)
+- Logs warnings for purchases that cannot be mapped to registered products
+- Automatically prevents concurrent restore operations via `isRestoringPurchases` property
 
-**Developer action**: Handle partial restore scenarios gracefully. Inform users about account requirements for restore (same Apple ID, Google account, Microsoft account). Don't assume restore will return all historical purchases.
+**Developer action**:
+- Handle both `onRestorePurchasesSucceeded` and `onRestorePurchasesFailed` signals
+- Treat 0 count as valid success case (no purchases to restore)
+- Show user-friendly error messages for restore failures
+- Inform users about account requirements for restore (same Apple ID, Google account, Microsoft account)
+- Don't assume restore will return all historical purchases
+- Check `isRestoringPurchases` property if you need to prevent UI actions during restore
 
 ### 8. Development vs Production Environment Differences
 **What happens**: Different behavior between testing and production deployments.
