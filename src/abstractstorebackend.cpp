@@ -113,6 +113,18 @@ AbstractProduct * AbstractStoreBackend::product(const QString &identifier)
     return nullptr;
 }
 
+void AbstractStoreBackend::finalize(Transaction transaction)
+{
+    qDebug() << "Store: Finalizing transaction" << transaction.orderId;
+    consumePurchase(transaction);
+}
+
+void AbstractStoreBackend::enableProcessing() {
+    if (_processingEnabled) return;
+    _processingEnabled = true;
+    emit processingEnabledChanged();
+}
+
 void AbstractStoreBackend::setConnected(bool connected)
 {
     if (_connected == connected)
@@ -141,18 +153,6 @@ void AbstractStoreBackend::setIsRestoringPurchases(bool restoring)
     _isRestoringPurchases = restoring;
     emit isRestoringPurchasesChanged();
     qDebug() << "Store isRestoringPurchases status changed to" << (_isRestoringPurchases ? "true" : "false");
-}
-
-void AbstractStoreBackend::finalize(Transaction transaction)
-{
-    qDebug() << "Store: Finalizing transaction" << transaction.orderId;
-    consumePurchase(transaction);
-}
-
-void AbstractStoreBackend::enableProcessing() {
-    if (_processingEnabled) return;
-    _processingEnabled = true;
-    emit processingEnabledChanged();
 }
 
 // Static QQmlListProperty accessors
