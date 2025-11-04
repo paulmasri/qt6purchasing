@@ -134,6 +134,7 @@ void AbstractStoreBackend::restorePurchases()
     }
 
     setIsRestoringPurchases(true);
+    restorePurchasesImpl();
 }
 
 void AbstractStoreBackend::finalize(Transaction transaction)

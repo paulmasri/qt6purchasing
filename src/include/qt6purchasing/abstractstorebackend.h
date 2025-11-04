@@ -56,7 +56,7 @@ public:
     virtual void purchaseProduct(AbstractProduct * product) = 0;
     virtual void consumePurchase(Transaction transaction) = 0;
 
-    Q_INVOKABLE virtual void restorePurchases();
+    Q_INVOKABLE void restorePurchases();
     Q_INVOKABLE virtual void finalize(Transaction transaction);
 
     // Transaction processing control (cross-platform defensive programming)
@@ -73,6 +73,9 @@ protected:
     void setConnected(bool connected);
     void setCanMakePurchases(bool canMakePurchases);
     void setIsRestoringPurchases(bool restoring);
+
+    // Platform-specific implementation called by restorePurchases()
+    virtual void restorePurchasesImpl() = 0;
 
 private:
     static void appendProduct(QQmlListProperty<AbstractProduct> *list, AbstractProduct *product);
