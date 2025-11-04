@@ -21,6 +21,7 @@ class AbstractStoreBackend : public QObject
 public:
     enum class PurchaseError {
         NoError,
+        Busy,
         UserCanceled,
         NetworkError,
         ServiceUnavailable,
@@ -55,7 +56,7 @@ public:
     virtual void purchaseProduct(AbstractProduct * product) = 0;
     virtual void consumePurchase(Transaction transaction) = 0;
 
-    Q_INVOKABLE virtual void restorePurchases() = 0;
+    Q_INVOKABLE virtual void restorePurchases();
     Q_INVOKABLE virtual void finalize(Transaction transaction);
 
     // Transaction processing control (cross-platform defensive programming)

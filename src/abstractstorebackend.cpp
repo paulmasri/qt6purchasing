@@ -113,6 +113,16 @@ AbstractProduct * AbstractStoreBackend::product(const QString &identifier)
     return nullptr;
 }
 
+void AbstractStoreBackend::restorePurchases()
+{
+    if (isRestoringPurchases()) {
+        emit restorePurchasesFailed(static_cast<int>(PurchaseError::Busy), 0, "");
+        return;
+    }
+
+    setIsRestoringPurchases(true);
+}
+
 void AbstractStoreBackend::finalize(Transaction transaction)
 {
     qDebug() << "Store: Finalizing transaction" << transaction.orderId;
