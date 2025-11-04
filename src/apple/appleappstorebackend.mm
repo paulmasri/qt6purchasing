@@ -41,6 +41,7 @@ static AbstractStoreBackend::PurchaseError mapStoreKitErrorToPurchaseError(int e
             return AbstractStoreBackend::PurchaseError::NotAllowed;
         case SKErrorPaymentInvalid:
         case SKErrorClientInvalid: // See https://stackoverflow.com/a/10975530/457584
+        case SKErrorInvalidSignature: // Cryptographic signature against promo code is invalid
             return AbstractStoreBackend::PurchaseError::PaymentInvalid;
         case SKErrorStoreProductNotAvailable:
             return AbstractStoreBackend::PurchaseError::ItemUnavailable;
