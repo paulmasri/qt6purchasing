@@ -93,6 +93,19 @@ AbstractStoreBackend::AbstractStoreBackend(QObject * parent) : QObject(parent)
             qCritical() << "Failed to map failed consumption to a product!";
         }
     });
+
+    connect(this, &AbstractStoreBackend::restorePurchasesSucceeded, this, [this](int count){
+        qDebug() << "restorePurchasesSucceeded: count=" << count;
+        setIsRestoringPurchases(false);
+    });
+
+    connect(this, &AbstractStoreBackend::restorePurchasesFailed, this,
+            [this](int error, int platformCode, const QString& message){
+        qDebug() << "restorePurchasesFailed:" << "error=" << error
+                 << "platformCode=" << platformCode
+                 << "message=" << message;
+        setIsRestoringPurchases(false);
+    });
 }
 
 QQmlListProperty<AbstractProduct> AbstractStoreBackend::productsQml()
