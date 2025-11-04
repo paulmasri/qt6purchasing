@@ -111,42 +111,47 @@ void StoreRestoreWorker::performRestore()
     try {
         // Create StoreContext in worker thread
         auto storeContext = StoreContext::GetDefault();
-        
+
         // Initialize with window handle
         auto initWindow = storeContext.as<IInitializeWithWindow>();
         initWindow->Initialize(_hwnd);
-        
+
         // Get user's product collection
         std::vector<winrt::hstring> productKinds = { L"Durable", L"UnmanagedConsumable" };
         auto result = storeContext.GetUserCollectionAsync(std::move(productKinds)).get();
-        
+
         QList<QVariantMap> restoredProducts;
-        
+
         if (!result.ExtendedError()) {
             auto products = result.Products();
-            
+
             for (auto const& item : products) {
                 auto storeProduct = item.Value();
-                
+
                 QVariantMap productData;
                 productData["storeId"] = QString::fromWCharArray(storeProduct.StoreId().c_str());
                 productData["productId"] = QString::fromWCharArray(item.Key().c_str());
                 productData["title"] = QString::fromWCharArray(storeProduct.Title().c_str());
                 productData["productKind"] = QString::fromWCharArray(storeProduct.ProductKind().c_str());
-                
+
                 restoredProducts.append(productData);
             }
+            emit restoreComplete(restoredProducts);
+        } else {
+            uint32_t errorCode = result.ExtendedError().value;
+            qWarning() << "Windows Store restore error:" << Qt::hex << errorCode;
+            emit restoreFailed(errorCode, QString("Windows Store API error: 0x%1").arg(errorCode, 0, 16));
         }
-        
-        emit restoreComplete(restoredProducts);
     } catch (const winrt::hresult_error& e) {
-        qWarning() << "Exception in restore:" << QString::fromWCharArray(e.message().c_str());
-        emit restoreComplete(QList<QVariantMap>());
+        uint32_t errorCode = static_cast<uint32_t>(e.code().value);
+        QString message = QString::fromWCharArray(e.message().c_str());
+        qWarning() << "Exception in restore:" << message << "Code:" << Qt::hex << errorCode;
+        emit restoreFailed(errorCode, message);
     } catch (...) {
         qWarning() << "Unknown exception in restore";
-        emit restoreComplete(QList<QVariantMap>());
+        emit restoreFailed(0xFFFFFFFF, "Unknown exception during restore");
     }
-    
+
     emit finished();
 }
 
