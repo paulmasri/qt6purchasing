@@ -47,6 +47,8 @@ GooglePlayStoreBackend::GooglePlayStoreBackend(QObject * parent) : AbstractStore
         {"purchaseRestored", "(Ljava/lang/String;)V", reinterpret_cast<void *>(purchaseRestored)},
         {"purchaseFailed", "(Ljava/lang/String;I)V", reinterpret_cast<void *>(purchaseFailed)},
         {"purchaseConsumed", "(Ljava/lang/String;)V", reinterpret_cast<void *>(purchaseConsumed)},
+        {"restorePurchasesSucceeded", "(I)V", reinterpret_cast<void *>(restorePurchasesSucceeded)},
+        {"restorePurchasesFailed", "(I)V", reinterpret_cast<void *>(restorePurchasesFailed)},
     };
     QJniEnvironment env;
     jclass objectClass = env->GetObjectClass(_googlePlayBillingJavaClass->object<jobject>());
@@ -174,9 +176,9 @@ void GooglePlayStoreBackend::consumePurchase(Transaction transaction)
     );
 }
 
-void GooglePlayStoreBackend::restorePurchases()
+void GooglePlayStoreBackend::restorePurchasesImpl()
 {
-    qDebug() << "Android restorePurchases() called - triggering manual queryPurchasesAsync";
+    qDebug() << "Android restorePurchasesImpl() called - triggering manual queryPurchasesAsync";
     _googlePlayBillingJavaClass->callMethod<void>("queryExistingPurchases");
 }
 
@@ -292,6 +294,34 @@ bool GooglePlayStoreBackend::canMakePurchases() const
 
     auto transaction = transactionFromJson(json);
     emit backend->consumePurchaseSucceeded(transaction);
+}
+
+/*static*/ void GooglePlayStoreBackend::restorePurchasesSucceeded(JNIEnv *env, jobject object, jint count)
+{
+    GooglePlayStoreBackend * backend = GooglePlayStoreBackend::s_currentInstance;
+    if (!backend) {
+        qWarning() << "Android: restorePurchasesSucceeded received but backend instance is null";
+        return;
+    }
+
+    qDebug() << "Android: Restore purchases completed successfully. Count:" << count;
+    emit backend->restorePurchasesSucceeded(count);
+}
+
+/*static*/ void GooglePlayStoreBackend::restorePurchasesFailed(JNIEnv *env, jobject object, jint billingResponseCode)
+{
+    GooglePlayStoreBackend * backend = GooglePlayStoreBackend::s_currentInstance;
+    if (!backend) {
+        qWarning() << "Android: restorePurchasesFailed received but backend instance is null";
+        return;
+    }
+
+    qDebug() << "Android: Restore purchases failed with billing response code:" << billingResponseCode;
+
+    PurchaseError mappedError = mapBillingResponseToPurchaseError(billingResponseCode);
+    QString message = getBillingResponseMessage(billingResponseCode);
+
+    emit backend->restorePurchasesFailed(static_cast<int>(mappedError), billingResponseCode, message);
 }
 
 /*static*/ AbstractStoreBackend::PurchaseError GooglePlayStoreBackend::mapBillingResponseToPurchaseError(int billingResponseCode)
