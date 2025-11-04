@@ -40,8 +40,8 @@ static AbstractStoreBackend::PurchaseError mapStoreKitErrorToPurchaseError(int e
         case SKErrorPaymentNotAllowed:
             return AbstractStoreBackend::PurchaseError::NotAllowed;
         case SKErrorPaymentInvalid:
+        case SKErrorClientInvalid: // See https://stackoverflow.com/a/10975530/457584
             return AbstractStoreBackend::PurchaseError::PaymentInvalid;
-        case SKErrorClientInvalid:
         case SKErrorStoreProductNotAvailable:
             return AbstractStoreBackend::PurchaseError::ItemUnavailable;
         case SKErrorCloudServiceNetworkConnectionFailed:
