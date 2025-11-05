@@ -41,16 +41,20 @@ public:
     static void purchaseRestored(JNIEnv * env, jobject object, jstring purchaseJson);
     static void purchaseFailed(JNIEnv * env, jobject object, jstring productId, jint billingResponseCode);
     static void purchaseConsumed(JNIEnv * env, jobject object, jstring purchaseJson);
+    static void restorePurchasesSucceeded(JNIEnv * env, jobject object, jint count);
+    static void restorePurchasesFailed(JNIEnv * env, jobject object, jint billingResponseCode);
 
     void startConnection() override;
     void registerProduct(AbstractProduct * product) override;
     void purchaseProduct(AbstractProduct * product) override;
     void consumePurchase(Transaction transaction) override;
-    void restorePurchases() override;
     bool canMakePurchases() const override;
 
     // Transaction processing control
     void enableProcessing() override;
+
+protected:
+    void restorePurchasesImpl() override;
 
 private:
     void processQueuedTransactions();

@@ -25,6 +25,8 @@ public class GooglePlayBilling {
     private static native void purchaseRestored(String purchaseJson);
     private static native void purchaseFailed(String productId, int billingResponseCode);
     private static native void purchaseConsumed(String purchaseJson);
+    private static native void restorePurchasesSucceeded(int count);
+    private static native void restorePurchasesFailed(int billingResponseCode);
 
     private Context context;
     private PurchasesUpdatedListener purchasesUpdatedListener;
@@ -67,10 +69,18 @@ public class GooglePlayBilling {
         purchasesResponseListener = new PurchasesResponseListener() {
             @Override
             public void onQueryPurchasesResponse(BillingResult billingResult, List<Purchase> purchases) {
-                if (!purchases.isEmpty()) {
-                    for (Purchase purchase : purchases) {
-                        purchaseRestored(purchase.getOriginalJson());
+                if (billingResult.getResponseCode() == BillingResponseCode.OK) {
+                    int count = 0;
+                    if (purchases != null && !purchases.isEmpty()) {
+                        for (Purchase purchase : purchases) {
+                            purchaseRestored(purchase.getOriginalJson());
+                            count++;
+                        }
                     }
+                    restorePurchasesSucceeded(count);
+                } else {
+                    debugMessage("Restore purchases failed with response code: " + billingResult.getResponseCode());
+                    restorePurchasesFailed(billingResult.getResponseCode());
                 }
             }
         };

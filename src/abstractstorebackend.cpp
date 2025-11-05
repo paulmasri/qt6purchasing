@@ -93,6 +93,19 @@ AbstractStoreBackend::AbstractStoreBackend(QObject * parent) : QObject(parent)
             qCritical() << "Failed to map failed consumption to a product!";
         }
     });
+
+    connect(this, &AbstractStoreBackend::restorePurchasesSucceeded, this, [this](int count){
+        qDebug() << "restorePurchasesSucceeded: count=" << count;
+        setIsRestoringPurchases(false);
+    });
+
+    connect(this, &AbstractStoreBackend::restorePurchasesFailed, this,
+            [this](int error, int platformCode, const QString& message){
+        qDebug() << "restorePurchasesFailed:" << "error=" << error
+                 << "platformCode=" << platformCode
+                 << "message=" << message;
+        setIsRestoringPurchases(false);
+    });
 }
 
 QQmlListProperty<AbstractProduct> AbstractStoreBackend::productsQml()
@@ -111,6 +124,29 @@ AbstractProduct * AbstractStoreBackend::product(const QString &identifier)
             return ap;
     }
     return nullptr;
+}
+
+void AbstractStoreBackend::restorePurchases()
+{
+    if (isRestoringPurchases()) {
+        emit restorePurchasesFailed(static_cast<int>(PurchaseError::Busy), 0, "");
+        return;
+    }
+
+    setIsRestoringPurchases(true);
+    restorePurchasesImpl();
+}
+
+void AbstractStoreBackend::finalize(Transaction transaction)
+{
+    qDebug() << "Store: Finalizing transaction" << transaction.orderId;
+    consumePurchase(transaction);
+}
+
+void AbstractStoreBackend::enableProcessing() {
+    if (_processingEnabled) return;
+    _processingEnabled = true;
+    emit processingEnabledChanged();
 }
 
 void AbstractStoreBackend::setConnected(bool connected)
@@ -133,16 +169,14 @@ void AbstractStoreBackend::setCanMakePurchases(bool canMakePurchases)
     qDebug() << "Store canMakePurchases status changed to" << (_canMakePurchases ? "enabled" : "disabled");
 }
 
-void AbstractStoreBackend::finalize(Transaction transaction)
+void AbstractStoreBackend::setIsRestoringPurchases(bool restoring)
 {
-    qDebug() << "Store: Finalizing transaction" << transaction.orderId;
-    consumePurchase(transaction);
-}
+    if (_isRestoringPurchases == restoring)
+        return;
 
-void AbstractStoreBackend::enableProcessing() {
-    if (_processingEnabled) return;
-    _processingEnabled = true;
-    emit processingEnabledChanged();
+    _isRestoringPurchases = restoring;
+    emit isRestoringPurchasesChanged();
+    qDebug() << "Store isRestoringPurchases status changed to" << (_isRestoringPurchases ? "true" : "false");
 }
 
 // Static QQmlListProperty accessors

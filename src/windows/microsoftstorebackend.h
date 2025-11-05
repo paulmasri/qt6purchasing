@@ -21,7 +21,6 @@ public:
     void registerProduct(AbstractProduct * product) override;
     void purchaseProduct(AbstractProduct * product) override;
     void consumePurchase(Transaction transaction) override;
-    void restorePurchases() override;
     bool canMakePurchases() const override;
 
     // Transaction processing control
@@ -29,10 +28,14 @@ public:
 
     static MicrosoftStoreBackend * s_currentInstance;
 
+protected:
+    void restorePurchasesImpl() override;
+
 private slots:
     void onProductQueried(AbstractProduct * product, bool success, const QVariantMap & productData);
     void onPurchaseComplete(AbstractProduct * product, winrt::Windows::Services::Store::StorePurchaseStatus status);
     void onRestoreComplete(const QList<QVariantMap> &restoredProducts);
+    void onRestoreFailed(uint32_t errorCode, const QString & message);
     void onAllProductsQueried(const QList<QVariantMap> &products);
 
 private:

@@ -40,8 +40,9 @@ static AbstractStoreBackend::PurchaseError mapStoreKitErrorToPurchaseError(int e
         case SKErrorPaymentNotAllowed:
             return AbstractStoreBackend::PurchaseError::NotAllowed;
         case SKErrorPaymentInvalid:
+        case SKErrorClientInvalid: // See https://stackoverflow.com/a/10975530/457584
+        case SKErrorInvalidSignature: // Cryptographic signature against promo code is invalid
             return AbstractStoreBackend::PurchaseError::PaymentInvalid;
-        case SKErrorClientInvalid:
         case SKErrorStoreProductNotAvailable:
             return AbstractStoreBackend::PurchaseError::ItemUnavailable;
         case SKErrorCloudServiceNetworkConnectionFailed:
@@ -204,6 +205,39 @@ AppleAppStoreBackend * AppleAppStoreBackend::s_currentInstance = nullptr;
     }
 }
 
+-(void)paymentQueue:(SKPaymentQueue *)queue restoreCompletedTransactionsFailedWithError:(NSError *)error {
+    AppleAppStoreBackend* backend = AppleAppStoreBackend::s_currentInstance;
+    if (!backend) {
+        qWarning() << "TransactionObserver: Restore failed but no backend available";
+        return;
+    }
+
+    qDebug() << "iOS: Restore purchases failed with error code:" << error.code;
+
+    int errorCode = error.code;
+    AbstractStoreBackend::PurchaseError mappedError = mapStoreKitErrorToPurchaseError(errorCode);
+    QString message = getStoreKitErrorMessage(errorCode);
+
+    QMetaObject::invokeMethod(backend, "restorePurchasesFailed", Qt::AutoConnection,
+        Q_ARG(int, static_cast<int>(mappedError)),
+        Q_ARG(int, errorCode),
+        Q_ARG(QString, message));
+}
+
+-(void)paymentQueueRestoreCompletedTransactionsFinished:(SKPaymentQueue *)queue {
+    AppleAppStoreBackend* backend = AppleAppStoreBackend::s_currentInstance;
+    if (!backend) {
+        qWarning() << "TransactionObserver: Restore completed but no backend available";
+        return;
+    }
+
+    int count = backend->restoredPurchasesCount();
+    qDebug() << "iOS: Restore purchases completed successfully. Count:" << count;
+
+    QMetaObject::invokeMethod(backend, "restorePurchasesSucceeded", Qt::AutoConnection,
+        Q_ARG(int, count));
+}
+
 @end
 
 @interface InAppPurchaseManager : NSObject <SKProductsRequestDelegate>
@@ -306,7 +340,12 @@ AppleAppStoreBackend::AppleAppStoreBackend(QObject * parent) : AbstractStoreBack
 {
     Q_ASSERT(QThread::currentThread() == QCoreApplication::instance()->thread());
     s_currentInstance = this;
-    
+
+    // Track restored purchases count for restoration completion reporting
+    connect(this, &AppleAppStoreBackend::purchaseRestored, this, [this](Transaction transaction){
+        _restoredPurchasesCount++;
+    });
+
     this->startConnection();
 }
 
@@ -366,9 +405,10 @@ void AppleAppStoreBackend::consumePurchase(Transaction transaction)
     }
 }
 
-void AppleAppStoreBackend::restorePurchases()
+void AppleAppStoreBackend::restorePurchasesImpl()
 {
-    qDebug() << "iOS restorePurchases() called - triggering SKPaymentQueue.restoreCompletedTransactions";
+    qDebug() << "iOS restorePurchasesImpl() called - triggering SKPaymentQueue.restoreCompletedTransactions";
+    _restoredPurchasesCount = 0;
     [[SKPaymentQueue defaultQueue] restoreCompletedTransactions];
 }
 

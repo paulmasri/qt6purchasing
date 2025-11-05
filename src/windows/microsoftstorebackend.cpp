@@ -332,30 +332,33 @@ void MicrosoftStoreBackend::consumePurchase(Transaction transaction)
     thread->start();
 }
 
-void MicrosoftStoreBackend::restorePurchases()
+void MicrosoftStoreBackend::restorePurchasesImpl()
 {
-    qDebug() << "restorePurchases() called, products count:" << products().size();
-    
+    qDebug() << "restorePurchasesImpl() called, products count:" << products().size();
+
     if (!isConnected()) {
         qWarning() << "Cannot restore purchases - store not connected";
+        emit restorePurchasesFailed(static_cast<int>(PurchaseError::ServiceUnavailable), 0, "Store not connected");
         return;
     }
-    
+
     if (!_hwnd) {
         qWarning() << "No window handle available for restore";
+        emit restorePurchasesFailed(static_cast<int>(PurchaseError::DeveloperError), 0, "No window handle available");
         return;
     }
-    
+
     auto* worker = new StoreRestoreWorker(_hwnd);
     auto* thread = new QThread(this);
-    
+
     worker->moveToThread(thread);
     connect(thread, &QThread::started, worker, &StoreRestoreWorker::performRestore);
     connect(worker, &StoreRestoreWorker::restoreComplete, this, &MicrosoftStoreBackend::onRestoreComplete, Qt::QueuedConnection);
+    connect(worker, &StoreRestoreWorker::restoreFailed, this, &MicrosoftStoreBackend::onRestoreFailed, Qt::QueuedConnection);
     connect(worker, &StoreRestoreWorker::finished, thread, &QThread::quit);
     connect(thread, &QThread::finished, thread, &QThread::deleteLater);
     connect(worker, &StoreRestoreWorker::finished, worker, &StoreRestoreWorker::deleteLater);
-    
+
     thread->start();
 }
 
@@ -370,6 +373,7 @@ void MicrosoftStoreBackend::onRestoreComplete(const QList<QVariantMap> &restored
         return;
     }
 
+    int restoredCount = 0;
     for (const auto& productData : restoredProducts) {
         QString msStoreId = productData["productId"].toString();
         QString orderId = QString("ms_restored_%1").arg(msStoreId);
@@ -388,11 +392,23 @@ void MicrosoftStoreBackend::onRestoreComplete(const QList<QVariantMap> &restored
             transaction.orderId = orderId;
             transaction.productId = qtIdentifier;
             emit purchaseRestored(transaction);
+            restoredCount++;
             qDebug() << "Restored purchase: MS Store ID" << msStoreId << "-> Qt ID" << qtIdentifier;
         } else {
             qWarning() << "Could not find Qt product for Microsoft Store ID:" << msStoreId;
         }
     }
+
+    emit restorePurchasesSucceeded(restoredCount);
+}
+
+void MicrosoftStoreBackend::onRestoreFailed(uint32_t errorCode, const QString & message)
+{
+    qDebug() << "onRestoreFailed: Backend thread:" << this->thread() << "Current thread:" << QThread::currentThread();
+    qWarning() << "Restore failed with error code:" << Qt::hex << errorCode << "Message:" << message;
+
+    PurchaseError mappedError = mapWindowsErrorToPurchaseError(errorCode);
+    emit restorePurchasesFailed(static_cast<int>(mappedError), errorCode, message);
 }
 
 void MicrosoftStoreBackend::onConsumableFulfillmentComplete(const QString & orderId, const QString & productId, bool success, const QString & result)

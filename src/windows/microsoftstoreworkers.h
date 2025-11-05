@@ -73,6 +73,7 @@ public slots:
 
 signals:
     void restoreComplete(const QList<QVariantMap> &restoredProducts);
+    void restoreFailed(uint32_t errorCode, const QString & message);
     void finished();
 };
 

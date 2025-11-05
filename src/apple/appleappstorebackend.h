@@ -18,7 +18,6 @@ public:
     void registerProduct(AbstractProduct * product) override;
     void purchaseProduct(AbstractProduct * product) override;
     void consumePurchase(Transaction transaction) override;
-    void restorePurchases() override;
     bool canMakePurchases() const override;
 
     // Transaction processing control
@@ -31,10 +30,15 @@ public:
 
     // Internal access for EarlyTransactionObserver
     InAppPurchaseManager * iapManager() const { return _iapManager; }
+    int restoredPurchasesCount() const { return _restoredPurchasesCount; }
+
+protected:
+    void restorePurchasesImpl() override;
 
 private:
-    
+
     InAppPurchaseManager * _iapManager = nullptr;
+    int _restoredPurchasesCount = 0;
 
 };
 

@@ -21,6 +21,7 @@ class AbstractStoreBackend : public QObject
 public:
     enum class PurchaseError {
         NoError,
+        Busy,
         UserCanceled,
         NetworkError,
         ServiceUnavailable,
@@ -39,6 +40,7 @@ public:
     Q_PROPERTY(bool connected READ isConnected NOTIFY connectedChanged FINAL)
     Q_PROPERTY(bool canMakePurchases READ canMakePurchases NOTIFY canMakePurchasesChanged FINAL)
     Q_PROPERTY(bool processingEnabled READ processingEnabled NOTIFY processingEnabledChanged FINAL)
+    Q_PROPERTY(bool isRestoringPurchases READ isRestoringPurchases NOTIFY isRestoringPurchasesChanged FINAL)
 
 public:
     QQmlListProperty<AbstractProduct> productsQml();
@@ -47,13 +49,14 @@ public:
     bool isConnected() const { return _connected; }
     virtual bool canMakePurchases() const = 0;
     bool processingEnabled() const { return _processingEnabled; }
+    bool isRestoringPurchases() const { return _isRestoringPurchases; }
 
     virtual void startConnection() = 0;
     virtual void registerProduct(AbstractProduct * product) = 0;
     virtual void purchaseProduct(AbstractProduct * product) = 0;
     virtual void consumePurchase(Transaction transaction) = 0;
 
-    Q_INVOKABLE virtual void restorePurchases() = 0;
+    Q_INVOKABLE void restorePurchases();
     Q_INVOKABLE virtual void finalize(Transaction transaction);
 
     // Transaction processing control (cross-platform defensive programming)
@@ -65,9 +68,14 @@ protected:
     bool _connected = false;
     bool _canMakePurchases = false;
     bool _processingEnabled = false;
+    bool _isRestoringPurchases = false;
 
     void setConnected(bool connected);
     void setCanMakePurchases(bool canMakePurchases);
+    void setIsRestoringPurchases(bool restoring);
+
+    // Platform-specific implementation called by restorePurchases()
+    virtual void restorePurchasesImpl() = 0;
 
 private:
     static void appendProduct(QQmlListProperty<AbstractProduct> *list, AbstractProduct *product);
@@ -80,6 +88,7 @@ signals:
     void connectedChanged();
     void canMakePurchasesChanged();
     void processingEnabledChanged();
+    void isRestoringPurchasesChanged();
 
     void productRegistered(AbstractProduct * product);
     void purchaseSucceeded(Transaction transaction);
@@ -88,6 +97,8 @@ signals:
     void purchaseFailed(const QString & productId, int error, int platformCode, const QString & message);
     void consumePurchaseSucceeded(Transaction transaction);
     void consumePurchaseFailed(Transaction transaction);
+    void restorePurchasesSucceeded(int count);
+    void restorePurchasesFailed(int error, int platformCode, const QString & message);
 };
 
 #endif // ABSTRACTSTOREBACKEND_H
