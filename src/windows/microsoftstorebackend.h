@@ -32,11 +32,13 @@ protected:
     void restorePurchasesImpl() override;
 
 private slots:
-    void onProductQueried(AbstractProduct * product, bool success, const QVariantMap & productData);
+    void onProductQuerySucceeded(AbstractProduct * product, const QVariantMap & productData);
+    void onProductQueryFailed(AbstractProduct * product, uint32_t hresult, const QString & message);
     void onPurchaseComplete(AbstractProduct * product, winrt::Windows::Services::Store::StorePurchaseStatus status);
-    void onRestoreComplete(const QList<QVariantMap> &restoredProducts);
+    void onRestoreSucceeded(const QList<QVariantMap> &restoredProducts);
     void onRestoreFailed(uint32_t errorCode, const QString & message);
     void onAllProductsQueried(const QList<QVariantMap> &products);
+    void onAllProductsQueryFailed(uint32_t hresult, const QString & message);
 
 private:
     HWND _hwnd = nullptr;
@@ -57,9 +59,9 @@ private:
 
     void initializeWindowHandle();
     void queryAllProducts();
-    void onConsumableFulfillmentComplete(const QString & orderId, const QString & productId, bool success, const QString & result);
     static PurchaseError mapWindowsErrorToPurchaseError(uint32_t errorCode);
     static QString getWindowsErrorMessage(uint32_t errorCode);
+    static PurchaseError mapHRESULTToPurchaseError(uint32_t hresult);
 };
 
 #endif // MICROSOFTSTOREBACKEND_H

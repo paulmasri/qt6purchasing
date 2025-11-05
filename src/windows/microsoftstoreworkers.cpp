@@ -47,11 +47,11 @@ void StoreProductQueryWorker::performQuery()
         
         if (!result.ExtendedError()) {
             auto products = result.Products();
-            
+
             if (products.Size() > 0) {
                 // Get the first (and should be only) product
                 auto storeProduct = products.First().Current().Value();
-                
+
                 QVariantMap productData;
                 productData["storeId"] = QString::fromWCharArray(storeProduct.StoreId().c_str());
                 productData["title"] = QString::fromWCharArray(storeProduct.Title().c_str());
@@ -59,22 +59,25 @@ void StoreProductQueryWorker::performQuery()
                 productData["price"] = QString::fromWCharArray(storeProduct.Price().FormattedPrice().c_str());
                 productData["productKind"] = QString::fromWCharArray(storeProduct.ProductKind().c_str());
                 productData["isInUserCollection"] = storeProduct.IsInUserCollection();
-                
-                emit queryComplete(true, productData);
+
+                emit querySucceeded(productData);
             } else {
                 qDebug() << "Product not found in store:" << _productId;
-                emit queryComplete(false, QVariantMap());
+                emit queryFailed(0, "Product not found in store");
             }
         } else {
-            qWarning() << "Store query error:" << Qt::hex << result.ExtendedError().value;
-            emit queryComplete(false, QVariantMap());
+            uint32_t hresult = result.ExtendedError().value;
+            qWarning() << "Store query error for product" << _productId << "- HRESULT:" << Qt::hex << Qt::showbase << hresult;
+            emit queryFailed(hresult, QString("Store API error: 0x%1").arg(hresult, 0, 16));
         }
     } catch (const winrt::hresult_error& e) {
-        qWarning() << "Exception in product query:" << QString::fromWCharArray(e.message().c_str());
-        emit queryComplete(false, QVariantMap());
+        uint32_t hresult = static_cast<uint32_t>(e.code().value);
+        QString message = QString::fromWCharArray(e.message().c_str());
+        qWarning() << "Exception in product query:" << message << "HRESULT:" << Qt::hex << Qt::showbase << hresult;
+        emit queryFailed(hresult, message);
     } catch (...) {
         qWarning() << "Unknown exception in product query";
-        emit queryComplete(false, QVariantMap());
+        emit queryFailed(0x80004005, "Unknown exception");
     }
     
     emit finished();
@@ -136,11 +139,11 @@ void StoreRestoreWorker::performRestore()
 
                 restoredProducts.append(productData);
             }
-            emit restoreComplete(restoredProducts);
+            emit restoreSucceeded(restoredProducts);
         } else {
-            uint32_t errorCode = result.ExtendedError().value;
-            qWarning() << "Windows Store restore error:" << Qt::hex << errorCode;
-            emit restoreFailed(errorCode, QString("Windows Store API error: 0x%1").arg(errorCode, 0, 16));
+            uint32_t hresult = result.ExtendedError().value;
+            qWarning() << "Windows Store restore error - HRESULT:" << Qt::hex << Qt::showbase << hresult;
+            emit restoreFailed(hresult, QString("Windows Store API error: 0x%1").arg(hresult, 0, 16));
         }
     } catch (const winrt::hresult_error& e) {
         uint32_t errorCode = static_cast<uint32_t>(e.code().value);
@@ -173,10 +176,10 @@ void StoreAllProductsWorker::performQuery()
         
         if (!result.ExtendedError()) {
             auto storeProducts = result.Products();
-            
+
             for (auto const& item : storeProducts) {
                 auto storeProduct = item.Value();
-                
+
                 QVariantMap productData;
                 productData["storeId"] = QString::fromWCharArray(storeProduct.StoreId().c_str());
                 productData["productId"] = QString::fromWCharArray(item.Key().c_str());
@@ -184,22 +187,25 @@ void StoreAllProductsWorker::performQuery()
                 productData["description"] = QString::fromWCharArray(storeProduct.Description().c_str());
                 productData["price"] = QString::fromWCharArray(storeProduct.Price().FormattedPrice().c_str());
                 productData["productKind"] = QString::fromWCharArray(storeProduct.ProductKind().c_str());
-                
+
                 products.append(productData);
             }
-            
+
             qDebug() << "Found" << products.size() << "associated products";
+            emit querySucceeded(products);
         } else {
-            qWarning() << "Error querying all products:" << Qt::hex << result.ExtendedError().value;
+            uint32_t hresult = result.ExtendedError().value;
+            qWarning() << "Error querying all products - HRESULT:" << Qt::hex << Qt::showbase << hresult;
+            emit queryFailed(hresult, QString("Store API error: 0x%1").arg(hresult, 0, 16));
         }
-        
-        emit queryComplete(products);
     } catch (const winrt::hresult_error& e) {
-        qWarning() << "Exception querying all products:" << QString::fromWCharArray(e.message().c_str());
-        emit queryComplete(QList<QVariantMap>());
+        uint32_t hresult = static_cast<uint32_t>(e.code().value);
+        QString message = QString::fromWCharArray(e.message().c_str());
+        qWarning() << "Exception querying all products:" << message << "HRESULT:" << Qt::hex << Qt::showbase << hresult;
+        emit queryFailed(hresult, message);
     } catch (...) {
         qWarning() << "Unknown exception querying all products";
-        emit queryComplete(QList<QVariantMap>());
+        emit queryFailed(0x80004005, "Unknown exception");
     }
     
     emit finished();
@@ -232,30 +238,32 @@ void StoreConsumableFulfillmentWorker::performFulfillment()
         switch (result.Status()) {
             case StoreConsumableStatus::Succeeded:
                 qDebug() << "Consumable fulfillment succeeded, balance:" << result.BalanceRemaining();
-                emit fulfillmentComplete(true, "Success");
+                emit fulfillmentSucceeded();
                 break;
             case StoreConsumableStatus::InsufficentQuantity:
                 qWarning() << "Consumable fulfillment failed: Insufficient quantity";
-                emit fulfillmentComplete(false, "InsufficientQuantity");
+                emit fulfillmentFailed(static_cast<uint32_t>(StoreConsumableStatus::InsufficentQuantity), "Insufficient quantity");
                 break;
             case StoreConsumableStatus::NetworkError:
                 qWarning() << "Consumable fulfillment failed: Network error";
-                emit fulfillmentComplete(false, "NetworkError");
+                emit fulfillmentFailed(static_cast<uint32_t>(StoreConsumableStatus::NetworkError), "Network error");
                 break;
             case StoreConsumableStatus::ServerError:
                 qWarning() << "Consumable fulfillment failed: Server error";
-                emit fulfillmentComplete(false, "ServerError");
+                emit fulfillmentFailed(static_cast<uint32_t>(StoreConsumableStatus::ServerError), "Server error");
                 break;
             default:
                 qWarning() << "Consumable fulfillment failed: Unknown error";
-                emit fulfillmentComplete(false, "UnknownError");
+                emit fulfillmentFailed(0x80004005, "Unknown fulfillment status");
         }
     } catch (const winrt::hresult_error& e) {
-        qWarning() << "Exception in consumable fulfillment:" << QString::fromWCharArray(e.message().c_str());
-        emit fulfillmentComplete(false, QString::fromWCharArray(e.message().c_str()));
+        uint32_t hresult = static_cast<uint32_t>(e.code().value);
+        QString message = QString::fromWCharArray(e.message().c_str());
+        qWarning() << "Exception in consumable fulfillment:" << message << "HRESULT:" << Qt::hex << Qt::showbase << hresult;
+        emit fulfillmentFailed(hresult, message);
     } catch (...) {
         qWarning() << "Unknown exception in consumable fulfillment";
-        emit fulfillmentComplete(false, "Unknown exception");
+        emit fulfillmentFailed(0x80004005, "Unknown exception");
     }
     
     emit finished();
