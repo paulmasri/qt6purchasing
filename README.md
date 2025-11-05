@@ -307,9 +307,9 @@ Store {
 - Transaction signals emitted before products exist cause "Failed to map purchase to product" errors
 
 **Platform-Specific Behavior:**
-- **iOS**: Queues early transactions, processes when enabled
-- **Android**: Queues Google Play callbacks, processes when enabled
-- **Windows**: Queues Store completion events, processes when enabled
+- **iOS**: Queues early transactions, processes when enabled. Does not automatically restore purchases on startup.
+- **Android**: Queues Google Play callbacks, processes when enabled. Automatically queries purchases on connection (individual `purchaseRestored` signals are queued, but `restorePurchasesSucceeded`/`restorePurchasesFailed` signals may fire before processing is enabled).
+- **Windows**: Queues Store completion events, processes when enabled. Automatically restores purchases after product query completes (all signals are queued until processing is enabled).
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -419,14 +419,21 @@ Qt6Purchasing.Store {
 
 **Important notes:**
 - `restorePurchasesSucceeded(count)` is emitted when restore completes, even if count is 0
-- Individual restored purchases are delivered via `Product.onPurchaseRestored` before the success signal
+- Individual restored purchases are delivered via `Product.onPurchaseRestored`
 - `isRestoringPurchases` property tracks restore operation state
 - The Store automatically prevents concurrent restore operations
 
-**Platform-specific restore behaviors:**
-- **iOS**: Calls `SKPaymentQueue.restoreCompletedTransactions()`. Reports success when restore completes, even if 0 purchases found.
-- **Android**: Calls `queryPurchasesAsync()`. Failure indicates billing service issue (network, disconnected service, etc.).
-- **Windows**: Calls `GetUserCollectionAsync()`. Queries user's product collection from Microsoft Store.
+### Platform-specific restore behaviors
+
+**Automatic vs Manual Restore:**
+- **iOS**: Manual only. Call `store.restorePurchases()` when needed (e.g., from a "Restore Purchases" button). Best practice: wait until after `enableProcessing()` has been called to ensure proper signal delivery.
+- **Android**: Automatic on connection. Also supports manual `store.restorePurchases()` calls. Note that automatic restore on startup may emit `restorePurchasesSucceeded`/`restorePurchasesFailed` before processing is enabled, though individual `purchaseRestored` signals are queued properly.
+- **Windows**: Automatic after product query. Also supports manual `store.restorePurchases()` calls. All restore-related signals are queued until processing is enabled.
+
+**Platform APIs:**
+- **iOS**: `SKPaymentQueue.restoreCompletedTransactions()`. Reports success when restore completes, even if 0 purchases found.
+- **Android**: `queryPurchasesAsync()` for INAPP purchases. Failure indicates billing service issue (network, disconnected service, etc.).
+- **Windows**: `GetUserCollectionAsync()`. Queries user's product collection from Microsoft Store.
 
 
 ## Edge Cases and Platform-Specific Behaviors
@@ -509,12 +516,15 @@ Understanding these scenarios is critical for robust production deployment:
 **What happens**: Restore purchases doesn't return all expected results due to account, platform, or network limitations.
 
 **Platform notes**:
-- **iOS**: Cross-device restore requires same Apple ID and account mismatches prevent some restores. Network failures during restore trigger `restorePurchasesFailed`.
-- **Android**: Restore works via Google account and purchase history is tied to specific Google account. Billing service disconnection or network issues cause restore failures.
-- **Windows**: Microsoft account-based restore with purchases tied to specific Microsoft account and device family. Store API errors are reported via `restorePurchasesFailed`.
+- **iOS**: Cross-device restore requires same Apple ID and account mismatches prevent some restores. Network failures during restore trigger `restorePurchasesFailed`. Restore is manual only - not called automatically on startup.
+- **Android**: Restore works via Google account and purchase history is tied to specific Google account. Billing service disconnection or network issues cause restore failures. Automatically queries purchases when billing service connects.
+- **Windows**: Microsoft account-based restore with purchases tied to specific Microsoft account and device family. Store API errors are reported via `restorePurchasesFailed`. Automatically restores purchases after initial product query.
 
 **Library behaviour**:
-- Calls platform restore APIs and delivers all available restored purchases via `purchaseRestored` signals
+- **Windows**: Automatically calls restore after product query completes. All restore signals (including `restorePurchasesSucceeded`/`restorePurchasesFailed`) are queued until `enableProcessing()` is called.
+- **Android**: Automatically queries purchases on billing service connection. Individual `purchaseRestored` signals are queued, but `restorePurchasesSucceeded`/`restorePurchasesFailed` may be emitted before `enableProcessing()`.
+- **iOS**: Does not automatically restore. Call `store.restorePurchases()` manually (best practice: after `enableProcessing()` has been called).
+- All platforms deliver available restored purchases via `purchaseRestored` signals
 - Emits `restorePurchasesSucceeded(count)` when restore completes successfully (count may be 0)
 - Emits `restorePurchasesFailed(error, platformCode, message)` on errors (network, authentication, service unavailable, etc.)
 - Logs warnings for purchases that cannot be mapped to registered products
@@ -523,6 +533,8 @@ Understanding these scenarios is critical for robust production deployment:
 **Developer action**:
 - Handle both `onRestorePurchasesSucceeded` and `onRestorePurchasesFailed` signals
 - Treat 0 count as valid success case (no purchases to restore)
+- For Android: Be aware that completion signals may arrive before `enableProcessing()`, though individual restores will be queued
+- For iOS: Call `store.restorePurchases()` after `enableProcessing()` for best results
 - Show user-friendly error messages for restore failures
 - Inform users about account requirements for restore (same Apple ID, Google account, Microsoft account)
 - Don't assume restore will return all historical purchases
