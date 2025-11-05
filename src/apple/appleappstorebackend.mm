@@ -36,6 +36,7 @@ static AbstractStoreBackend::PurchaseError mapStoreKitErrorToPurchaseError(int e
 {
     switch (errorCode) {
         case SKErrorPaymentCancelled:
+        case SKErrorOverlayCancelled:
             return AbstractStoreBackend::PurchaseError::UserCanceled;
         case SKErrorPaymentNotAllowed:
             return AbstractStoreBackend::PurchaseError::NotAllowed;
@@ -44,10 +45,15 @@ static AbstractStoreBackend::PurchaseError mapStoreKitErrorToPurchaseError(int e
         case SKErrorInvalidSignature: // Cryptographic signature against promo code is invalid
             return AbstractStoreBackend::PurchaseError::PaymentInvalid;
         case SKErrorStoreProductNotAvailable:
+        case SKErrorInvalidOfferPrice:
             return AbstractStoreBackend::PurchaseError::ItemUnavailable;
         case SKErrorCloudServiceNetworkConnectionFailed:
         case SKErrorCloudServiceRevoked:
             return AbstractStoreBackend::PurchaseError::NetworkError;
+        case SKErrorUnauthorizedRequestData:
+        case SKErrorInvalidOfferIdentifier:
+        case SKErrorMissingOfferParams:
+            return AbstractStoreBackend::PurchaseError::DeveloperError;
         case SKErrorUnknown:
         default:
             return AbstractStoreBackend::PurchaseError::UnknownError;
