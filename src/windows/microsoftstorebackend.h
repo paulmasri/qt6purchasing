@@ -45,17 +45,16 @@ private:
     QMap<QString, AbstractProduct *> _registeredProducts; // Track products by identifier
 
     void processQueuedTransactions();
+    void processPurchase(AbstractProduct * product, winrt::Windows::Services::Store::StorePurchaseStatus status);
+    void processRestoredProducts(const QList<QVariantMap> &restoredProducts);
 
     // Queued transaction data
     struct QueuedPurchase {
         AbstractProduct* product;
         winrt::Windows::Services::Store::StorePurchaseStatus status;
     };
-    struct QueuedRestore {
-        QList<QVariantMap> restoredProducts;
-    };
     QList<QueuedPurchase> _queuedPurchases;
-    QList<QueuedRestore> _queuedRestores;
+    QList<QVariantMap> _queuedRestores;
 
     void initializeWindowHandle();
     void queryAllProducts();
