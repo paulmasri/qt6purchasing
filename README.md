@@ -307,9 +307,9 @@ Store {
 - Transaction signals emitted before products exist cause "Failed to map purchase to product" errors
 
 **Platform-Specific Behavior:**
-- **iOS**: Queues early transactions, processes when enabled. Does not automatically restore purchases on startup.
-- **Android**: Queues Google Play callbacks, processes when enabled. Automatically queries purchases on connection (individual `purchaseRestored` signals are queued, but `restorePurchasesSucceeded`/`restorePurchasesFailed` signals may fire before processing is enabled).
-- **Windows**: Queues Store completion events, processes when enabled. Automatically restores purchases after product query completes (all signals are queued until processing is enabled).
+- **iOS**: Queues early transactions, processing them when enabled. Does not automatically restore purchases on startup.
+- **Android**: Queues Google Play callbacks, processing them when enabled. Automatically queries purchases on connection (individual `purchaseRestored` signals are queued, but `restorePurchasesSucceeded`/`restorePurchasesFailed` signals may fire before processing is enabled).
+- **Windows**: Queues Store completion events, processing them when enabled. Automatically restores purchases after product query completes (`purchaseRestored` and `restorePurchasesSucceeded` signals are queued, but `restorePurchasesFailed` signal may fire before processing is enabled).
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -426,9 +426,9 @@ Qt6Purchasing.Store {
 ### Platform-specific restore behaviors
 
 **Automatic vs Manual Restore:**
-- **iOS**: Manual only. Call `store.restorePurchases()` when needed (e.g., from a "Restore Purchases" button). Best practice: wait until after `enableProcessing()` has been called to ensure proper signal delivery.
+- **iOS**: Manual only. Call `store.restorePurchases()` when needed (e.g., from a "Restore Purchases" button). Wait until after `enableProcessing()` has been called to ensure proper signal delivery.
 - **Android**: Automatic on connection. Also supports manual `store.restorePurchases()` calls. Note that automatic restore on startup may emit `restorePurchasesSucceeded`/`restorePurchasesFailed` before processing is enabled, though individual `purchaseRestored` signals are queued properly.
-- **Windows**: Automatic after product query. Also supports manual `store.restorePurchases()` calls. All restore-related signals are queued until processing is enabled.
+- **Windows**: Automatic after product query. Also supports manual `store.restorePurchases()` calls. Note that automatic restore on startup may emit `restorePurchasesFailed` before processing is enabled; `restorePurchasesSucceeded` and individual `purchaseRestored` signals are queued properly.
 
 **Platform APIs:**
 - **iOS**: `SKPaymentQueue.restoreCompletedTransactions()`. Reports success when restore completes, even if 0 purchases found.
@@ -472,9 +472,9 @@ Understanding these scenarios is critical for robust production deployment:
 - **Android**: Unacknowledged purchases remain available via `queryPurchases()` on startup.
 - **Windows**: Unfulfilled consumables remain in purchase history until consumed.
 
-**Library behaviour**: Automatically detects unfinished transactions on next app launch. Delivers them via `purchaseRestored` signal during startup. Maintains transaction queue integrity across app sessions.
+**Library behaviour**: Automatically detects unfinished transactions on next app launch. **iOS** delivers them via `purchaseSucceeded` signal (same as new purchases). **Android** & **Windows** delivers them via `purchaseRestored` signal, as they both perform an automatic "Restore Purchases" during startup. This maintains transaction queue integrity across app sessions.
 
-**Developer action**: Always handle `onPurchaseRestored` the same way as `onPurchaseSucceeded`. Call `store.finalize(transaction)` in both handlers. Implement idempotent content delivery - check if user already has the purchased item before granting it again.
+**Developer action**: Always handle both `onPurchaseSucceeded` and `onPurchaseRestored` identically - they both deliver transactions that need fulfillment. Call `store.finalize(transaction)` in both handlers. Implement idempotent content delivery - check if user already has the purchased item before granting it again.
 
 ### 4. Consumable Purchase Without Consumption
 **What happens**: Purchase succeeds but `store.finalize(transaction)` is never called (due to app crashes, network issues, or code bugs).
@@ -521,9 +521,9 @@ Understanding these scenarios is critical for robust production deployment:
 - **Windows**: Microsoft account-based restore with purchases tied to specific Microsoft account and device family. Store API errors are reported via `restorePurchasesFailed`. Automatically restores purchases after initial product query.
 
 **Library behaviour**:
-- **Windows**: Automatically calls restore after product query completes. All restore signals (including `restorePurchasesSucceeded`/`restorePurchasesFailed`) are queued until `enableProcessing()` is called.
+- **Windows**: Automatically calls restore after product query completes. Restore signals `purchaseRestored` and `restorePurchasesSucceeded` are queued, but `restorePurchasesFailed` may be emitted before `enableProcessing()`.
 - **Android**: Automatically queries purchases on billing service connection. Individual `purchaseRestored` signals are queued, but `restorePurchasesSucceeded`/`restorePurchasesFailed` may be emitted before `enableProcessing()`.
-- **iOS**: Does not automatically restore. Call `store.restorePurchases()` manually (best practice: after `enableProcessing()` has been called).
+- **iOS**: Does not automatically restore. Call `store.restorePurchases()` manually (after `enableProcessing()` has been called).
 - All platforms deliver available restored purchases via `purchaseRestored` signals
 - Emits `restorePurchasesSucceeded(count)` when restore completes successfully (count may be 0)
 - Emits `restorePurchasesFailed(error, platformCode, message)` on errors (network, authentication, service unavailable, etc.)

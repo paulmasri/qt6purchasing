@@ -34,7 +34,8 @@ public slots:
     void performQuery();
 
 signals:
-    void queryComplete(bool success, const QVariantMap &productData);
+    void querySucceeded(const QVariantMap &productData);
+    void queryFailed(uint32_t hresult, const QString &message);
     void finished();
 
 private:
@@ -72,7 +73,7 @@ public slots:
     void performRestore();
 
 signals:
-    void restoreComplete(const QList<QVariantMap> &restoredProducts);
+    void restoreSucceeded(const QList<QVariantMap> &restoredProducts);
     void restoreFailed(uint32_t errorCode, const QString & message);
     void finished();
 };
@@ -89,7 +90,8 @@ public slots:
     void performQuery();
 
 signals:
-    void queryComplete(const QList<QVariantMap> &products);
+    void querySucceeded(const QList<QVariantMap> &products);
+    void queryFailed(uint32_t hresult, const QString &message);
     void finished();
 };
 
@@ -105,7 +107,8 @@ public slots:
     void performFulfillment();
 
 signals:
-    void fulfillmentComplete(bool success, const QString &result);
+    void fulfillmentSucceeded();
+    void fulfillmentFailed(uint32_t errorCode, const QString &message);
     void finished();
 
 private:
