@@ -106,6 +106,7 @@ qt_add_qml_module(qt6purchasinglib
 target_include_directories(qt6purchasinglib
     PRIVATE
         ${PLATFORM_INCLUDE}
+		${CMAKE_CURRENT_SOURCE_DIR}/include/qt6purchasing
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
