@@ -420,7 +420,7 @@ void AppleAppStoreBackend::restorePurchasesImpl()
 
 bool AppleAppStoreBackend::canMakePurchases() const
 {
-    return [SKPaymentQueue canMakePayments];
+    return isConnected() && [SKPaymentQueue canMakePayments];
 }
 
 void AppleAppStoreBackend::enableProcessing()
