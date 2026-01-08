@@ -36,6 +36,7 @@ public:
     static void billingResponseReceived(JNIEnv * env, jobject object, jint billingResponseCode);
     static void connectedChangedHelper(JNIEnv * env, jobject object, jboolean connected);
     static void productRegistered(JNIEnv * env, jobject object, jstring productJson);
+    static void productRegistrationFailed(JNIEnv * env, jobject object, jstring productId, jint billingResponseCode);
     static void purchaseSucceeded(JNIEnv * env, jobject object, jstring purchaseJson);
     static void purchasePending(JNIEnv * env, jobject object, jstring purchaseJson);
     static void purchaseRestored(JNIEnv * env, jobject object, jstring purchaseJson);
