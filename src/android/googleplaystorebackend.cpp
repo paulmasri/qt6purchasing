@@ -42,6 +42,7 @@ GooglePlayStoreBackend::GooglePlayStoreBackend(QObject * parent) : AbstractStore
         {"billingResponseReceived", "(I)V", reinterpret_cast<void *>(billingResponseReceived)},
         {"connectedChangedHelper", "(Z)V", reinterpret_cast<void *>(connectedChangedHelper)},
         {"productRegistered", "(Ljava/lang/String;)V", reinterpret_cast<void *>(productRegistered)},
+        {"productRegistrationFailed", "(Ljava/lang/String;I)V", reinterpret_cast<void *>(productRegistrationFailed)},
         {"purchaseSucceeded", "(Ljava/lang/String;)V", reinterpret_cast<void *>(purchaseSucceeded)},
         {"purchasePending", "(Ljava/lang/String;)V", reinterpret_cast<void *>(purchasePending)},
         {"purchaseRestored", "(Ljava/lang/String;)V", reinterpret_cast<void *>(purchaseRestored)},
@@ -133,6 +134,27 @@ void GooglePlayStoreBackend::registerProduct(AbstractProduct * product)
     } else {
         qCritical() << "Registered a product that's not in the list of products. This is not handled.";
     }
+}
+
+/*static*/ void GooglePlayStoreBackend::productRegistrationFailed(JNIEnv *env, jobject object, jstring productId, jint billingResponseCode)
+{
+    GooglePlayStoreBackend * backend = GooglePlayStoreBackend::s_currentInstance;
+    if (!backend) {
+        qCritical() << "Google Play product registration failed callback received but backend instance is null";
+        return;
+    }
+
+    const char* productIdCStr = env->GetStringUTFChars(productId, nullptr);
+    QString prodId = QString::fromUtf8(productIdCStr);
+    env->ReleaseStringUTFChars(productId, productIdCStr);
+
+    qWarning() << "Product registration failed for" << prodId << "with billing response code:" << billingResponseCode;
+
+    AbstractProduct * product = backend->product(prodId);
+    if (product)
+        product->setStatus(AbstractProduct::Unknown);
+    else
+        qWarning() << "Could not find product to update status:" << prodId;
 }
 
 void GooglePlayStoreBackend::purchaseProduct(AbstractProduct * product)

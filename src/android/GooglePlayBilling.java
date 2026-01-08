@@ -19,6 +19,7 @@ public class GooglePlayBilling {
     private static native void connectedChangedHelper(boolean connected);
     private static native void billingResponseReceived(int billingResponseCode);
     private static native void productRegistered(String productJson);
+    private static native void productRegistrationFailed(String productId, int billingResponseCode);
 
     private static native void purchaseSucceeded(String purchaseJson);
     private static native void purchasePending(String purchaseJson);
@@ -127,11 +128,18 @@ public class GooglePlayBilling {
                 @Override
                 public void onSkuDetailsResponse(BillingResult billingResult,
                         List<SkuDetails> skuDetailsList) {
-                    if (skuDetailsList == null)
-//                        throw new NullPointerException("skuDetailsList is null");
-                        return;
-
                     billingResponseReceived(billingResult.getResponseCode());
+
+                    if (billingResult.getResponseCode() != BillingResponseCode.OK) {
+                        productRegistrationFailed(productId, billingResult.getResponseCode());
+                        return;
+                    }
+
+                    if (skuDetailsList == null || skuDetailsList.isEmpty()) {
+                        productRegistrationFailed(productId, BillingResponseCode.OK);
+                        return;
+                    }
+
                     productRegistered(skuDetailsList.get(0).getOriginalJson());
                 }
             });
