@@ -36,10 +36,8 @@ protected:
     void restorePurchasesImpl() override;
 
 private:
-
     InAppPurchaseManager * _iapManager = nullptr;
     int _restoredPurchasesCount = 0;
-
 };
 
 #endif // APPLEAPPSTOREBACKEND_H

@@ -92,7 +92,7 @@ signals:
 
     void purchaseSucceeded(Transaction transaction);
     void purchasePending(Transaction transaction);
-    void purchaseFailed(int error, int platformCode, const QString & message);
+    void purchaseFailed(int error, int platformCode, const QString &message);
     void purchaseRestored(Transaction transaction);
     void consumePurchaseSucceeded(Transaction transaction);
     void consumePurchaseFailed(Transaction transaction);

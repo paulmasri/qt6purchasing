@@ -20,11 +20,11 @@ AbstractStoreBackend::AbstractStoreBackend(QObject * parent) : QObject(parent)
         }
     });
 
-    connect(this, &AbstractStoreBackend::productRegistered, this, [](AbstractProduct * product){
+    connect(this, &AbstractStoreBackend::productRegistered, this, [](AbstractProduct * product) {
         qDebug() << "Product registered:" << product->identifier();
     });
 
-    connect(this, &AbstractStoreBackend::purchaseSucceeded, this, [this](Transaction transaction){
+    connect(this, &AbstractStoreBackend::purchaseSucceeded, this, [this](Transaction transaction) {
         qDebug() << "purchaseSucceeded:" << transaction.orderId;
 
         AbstractProduct * ap = product(transaction.productId);
@@ -35,7 +35,7 @@ AbstractStoreBackend::AbstractStoreBackend(QObject * parent) : QObject(parent)
         }
     });
 
-    connect(this, &AbstractStoreBackend::purchasePending, this, [this](Transaction transaction){
+    connect(this, &AbstractStoreBackend::purchasePending, this, [this](Transaction transaction) {
         qDebug() << "purchasePending:" << transaction.orderId;
 
         AbstractProduct * ap = product(transaction.productId);
@@ -46,7 +46,7 @@ AbstractStoreBackend::AbstractStoreBackend(QObject * parent) : QObject(parent)
         }
     });
 
-    connect(this, &AbstractStoreBackend::purchaseRestored, this, [this](Transaction transaction){
+    connect(this, &AbstractStoreBackend::purchaseRestored, this, [this](Transaction transaction) {
         qDebug() << "purchaseRestored:" << transaction.orderId;
 
         AbstractProduct * ap = product(transaction.productId);
@@ -57,22 +57,25 @@ AbstractStoreBackend::AbstractStoreBackend(QObject * parent) : QObject(parent)
         }
     });
 
-    connect(this, &AbstractStoreBackend::purchaseFailed, this,
-            [this](const QString& productId, int error, int platformCode, const QString& message){
-        qDebug() << "purchaseFailed:" << "productId=" << productId 
-                 << "error=" << error << "platformCode=" << platformCode 
-                 << "message=" << message;
-        
-        // Route to the appropriate product
-        AbstractProduct * ap = product(productId);
-        if (ap) {
-            emit ap->purchaseFailed(error, platformCode, message);
-        } else {
-            qWarning() << "Failed to find product for purchase failure:" << productId;
-        }
-    });
+    connect(
+        this,
+        &AbstractStoreBackend::purchaseFailed,
+        this,
+        [this](const QString &productId, int error, int platformCode, const QString &message) {
+            qDebug() << "purchaseFailed:" << "productId=" << productId << "error=" << error
+                     << "platformCode=" << platformCode << "message=" << message;
 
-    connect(this, &AbstractStoreBackend::consumePurchaseSucceeded, this, [this](Transaction transaction){
+            // Route to the appropriate product
+            AbstractProduct * ap = product(productId);
+            if (ap) {
+                emit ap->purchaseFailed(error, platformCode, message);
+            } else {
+                qWarning() << "Failed to find product for purchase failure:" << productId;
+            }
+        }
+    );
+
+    connect(this, &AbstractStoreBackend::consumePurchaseSucceeded, this, [this](Transaction transaction) {
         qDebug() << "consumePurchaseSucceeded:" << transaction.orderId;
 
         AbstractProduct * ap = product(transaction.productId);
@@ -83,7 +86,7 @@ AbstractStoreBackend::AbstractStoreBackend(QObject * parent) : QObject(parent)
         }
     });
 
-    connect(this, &AbstractStoreBackend::consumePurchaseFailed, this, [this](Transaction transaction){
+    connect(this, &AbstractStoreBackend::consumePurchaseFailed, this, [this](Transaction transaction) {
         qDebug() << "consumePurchaseFailed:" << transaction.orderId;
 
         AbstractProduct * ap = product(transaction.productId);
@@ -94,27 +97,26 @@ AbstractStoreBackend::AbstractStoreBackend(QObject * parent) : QObject(parent)
         }
     });
 
-    connect(this, &AbstractStoreBackend::restorePurchasesSucceeded, this, [this](int count){
+    connect(this, &AbstractStoreBackend::restorePurchasesSucceeded, this, [this](int count) {
         qDebug() << "restorePurchasesSucceeded: count=" << count;
         setIsRestoringPurchases(false);
     });
 
-    connect(this, &AbstractStoreBackend::restorePurchasesFailed, this,
-            [this](int error, int platformCode, const QString& message){
-        qDebug() << "restorePurchasesFailed:" << "error=" << error
-                 << "platformCode=" << platformCode
-                 << "message=" << message;
-        setIsRestoringPurchases(false);
-    });
+    connect(
+        this,
+        &AbstractStoreBackend::restorePurchasesFailed,
+        this,
+        [this](int error, int platformCode, const QString &message) {
+            qDebug() << "restorePurchasesFailed:" << "error=" << error << "platformCode=" << platformCode
+                     << "message=" << message;
+            setIsRestoringPurchases(false);
+        }
+    );
 }
 
 QQmlListProperty<AbstractProduct> AbstractStoreBackend::productsQml()
 {
-    return QQmlListProperty<AbstractProduct>(this, nullptr,
-                                             &appendProduct,
-                                             &productCount,
-                                             &productAt,
-                                             &clearProducts);
+    return QQmlListProperty<AbstractProduct>(this, nullptr, &appendProduct, &productCount, &productAt, &clearProducts);
 }
 
 AbstractProduct * AbstractStoreBackend::product(const QString &identifier)
@@ -143,8 +145,10 @@ void AbstractStoreBackend::finalize(Transaction transaction)
     consumePurchase(transaction);
 }
 
-void AbstractStoreBackend::enableProcessing() {
-    if (_processingEnabled) return;
+void AbstractStoreBackend::enableProcessing()
+{
+    if (_processingEnabled)
+        return;
     _processingEnabled = true;
     emit processingEnabledChanged();
 }
@@ -180,7 +184,7 @@ void AbstractStoreBackend::setIsRestoringPurchases(bool restoring)
 }
 
 // Static QQmlListProperty accessors
-void AbstractStoreBackend::appendProduct(QQmlListProperty<AbstractProduct> *list, AbstractProduct *product)
+void AbstractStoreBackend::appendProduct(QQmlListProperty<AbstractProduct> * list, AbstractProduct * product)
 {
     AbstractStoreBackend * store = qobject_cast<AbstractStoreBackend *>(list->object);
     if (store && product) {
@@ -189,19 +193,19 @@ void AbstractStoreBackend::appendProduct(QQmlListProperty<AbstractProduct> *list
     }
 }
 
-qsizetype AbstractStoreBackend::productCount(QQmlListProperty<AbstractProduct> *list)
+qsizetype AbstractStoreBackend::productCount(QQmlListProperty<AbstractProduct> * list)
 {
     AbstractStoreBackend * store = qobject_cast<AbstractStoreBackend *>(list->object);
     return store ? store->_products.count() : 0;
 }
 
-AbstractProduct *AbstractStoreBackend::productAt(QQmlListProperty<AbstractProduct> *list, qsizetype index)
+AbstractProduct * AbstractStoreBackend::productAt(QQmlListProperty<AbstractProduct> * list, qsizetype index)
 {
     AbstractStoreBackend * store = qobject_cast<AbstractStoreBackend *>(list->object);
     return (store && index >= 0 && index < store->_products.count()) ? store->_products.at(index) : nullptr;
 }
 
-void AbstractStoreBackend::clearProducts(QQmlListProperty<AbstractProduct> *list)
+void AbstractStoreBackend::clearProducts(QQmlListProperty<AbstractProduct> * list)
 {
     AbstractStoreBackend * store = qobject_cast<AbstractStoreBackend *>(list->object);
     if (store) {

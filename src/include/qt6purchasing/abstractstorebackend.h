@@ -78,10 +78,10 @@ protected:
     virtual void restorePurchasesImpl() = 0;
 
 private:
-    static void appendProduct(QQmlListProperty<AbstractProduct> *list, AbstractProduct *product);
-    static qsizetype productCount(QQmlListProperty<AbstractProduct> *list);
-    static AbstractProduct *productAt(QQmlListProperty<AbstractProduct> *list, qsizetype index);
-    static void clearProducts(QQmlListProperty<AbstractProduct> *list);
+    static void appendProduct(QQmlListProperty<AbstractProduct> * list, AbstractProduct * product);
+    static qsizetype productCount(QQmlListProperty<AbstractProduct> * list);
+    static AbstractProduct * productAt(QQmlListProperty<AbstractProduct> * list, qsizetype index);
+    static void clearProducts(QQmlListProperty<AbstractProduct> * list);
 
 signals:
     void productsChanged();
@@ -94,11 +94,11 @@ signals:
     void purchaseSucceeded(Transaction transaction);
     void purchasePending(Transaction transaction);
     void purchaseRestored(Transaction transaction);
-    void purchaseFailed(const QString & productId, int error, int platformCode, const QString & message);
+    void purchaseFailed(const QString &productId, int error, int platformCode, const QString &message);
     void consumePurchaseSucceeded(Transaction transaction);
     void consumePurchaseFailed(Transaction transaction);
     void restorePurchasesSucceeded(int count);
-    void restorePurchasesFailed(int error, int platformCode, const QString & message);
+    void restorePurchasesFailed(int error, int platformCode, const QString &message);
 };
 
 #endif // ABSTRACTSTOREBACKEND_H

@@ -30,7 +30,7 @@ public:
     Q_ENUM(BillingResponseCode)
 
     explicit GooglePlayStoreBackend(QObject * parent = nullptr);
-	~GooglePlayStoreBackend();
+    ~GooglePlayStoreBackend();
 
     static void debugMessage(JNIEnv * env, jobject object, jstring message);
     static void billingResponseReceived(JNIEnv * env, jobject object, jint billingResponseCode);
@@ -67,7 +67,7 @@ private:
     static PurchaseError mapBillingResponseToPurchaseError(int billingResponseCode);
     static QString getBillingResponseMessage(int billingResponseCode);
 
-	static GooglePlayStoreBackend * s_currentInstance;
+    static GooglePlayStoreBackend * s_currentInstance;
     QJniObject * _googlePlayBillingJavaClass = nullptr;
 };
 

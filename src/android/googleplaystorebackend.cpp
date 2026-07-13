@@ -9,7 +9,7 @@
 #include <QCoreApplication>
 
 // Helper functions for GooglePlayStoreTransaction <-> JSON conversion
-static Transaction transactionFromJson(const QJsonObject& json)
+static Transaction transactionFromJson(const QJsonObject &json)
 {
     Transaction transaction;
     transaction.orderId = json.value("orderId").toString();
@@ -53,9 +53,7 @@ GooglePlayStoreBackend::GooglePlayStoreBackend(QObject * parent) : AbstractStore
     };
     QJniEnvironment env;
     jclass objectClass = env->GetObjectClass(_googlePlayBillingJavaClass->object<jobject>());
-    env->RegisterNatives(objectClass,
-                         methods,
-                         sizeof(methods) / sizeof(methods[0]));
+    env->RegisterNatives(objectClass, methods, sizeof(methods) / sizeof(methods[0]));
     env->DeleteLocalRef(objectClass);
 
     this->startConnection();
@@ -74,7 +72,7 @@ GooglePlayStoreBackend::~GooglePlayStoreBackend()
 
 /*static*/ void GooglePlayStoreBackend::debugMessage(JNIEnv * env, jobject object, jstring message)
 {
-    const char* messageCStr = env->GetStringUTFChars(message, nullptr);
+    const char * messageCStr = env->GetStringUTFChars(message, nullptr);
     qDebug() << messageCStr;
     env->ReleaseStringUTFChars(message, messageCStr);
 }
@@ -103,9 +101,7 @@ void GooglePlayStoreBackend::startConnection()
 void GooglePlayStoreBackend::registerProduct(AbstractProduct * product)
 {
     _googlePlayBillingJavaClass->callMethod<void>(
-        "registerProduct",
-        "(Ljava/lang/String;)V",
-        QJniObject::fromString( product->identifier() ).object<jstring>()
+        "registerProduct", "(Ljava/lang/String;)V", QJniObject::fromString(product->identifier()).object<jstring>()
     );
 }
 
@@ -116,12 +112,13 @@ void GooglePlayStoreBackend::registerProduct(AbstractProduct * product)
         qCritical() << "Google Play product registration callback received but backend instance is null";
         return;
     }
-    
-    const char* jsonCStr = env->GetStringUTFChars(message, nullptr);
+
+    const char * jsonCStr = env->GetStringUTFChars(message, nullptr);
     QJsonObject json = QJsonDocument::fromJson(jsonCStr).object();
     env->ReleaseStringUTFChars(message, jsonCStr);
-    
-    GooglePlayStoreProduct * product = reinterpret_cast<GooglePlayStoreProduct *>(backend->product( json["productId"].toString() ));
+
+    GooglePlayStoreProduct * product =
+        reinterpret_cast<GooglePlayStoreProduct *>(backend->product(json["productId"].toString()));
 
     if (product) {
         product->setJson(json);
@@ -136,7 +133,9 @@ void GooglePlayStoreBackend::registerProduct(AbstractProduct * product)
     }
 }
 
-/*static*/ void GooglePlayStoreBackend::productRegistrationFailed(JNIEnv *env, jobject object, jstring productId, jint billingResponseCode)
+/*static*/ void GooglePlayStoreBackend::productRegistrationFailed(
+    JNIEnv * env, jobject object, jstring productId, jint billingResponseCode
+)
 {
     GooglePlayStoreBackend * backend = GooglePlayStoreBackend::s_currentInstance;
     if (!backend) {
@@ -144,7 +143,7 @@ void GooglePlayStoreBackend::registerProduct(AbstractProduct * product)
         return;
     }
 
-    const char* productIdCStr = env->GetStringUTFChars(productId, nullptr);
+    const char * productIdCStr = env->GetStringUTFChars(productId, nullptr);
     QString prodId = QString::fromUtf8(productIdCStr);
     env->ReleaseStringUTFChars(productId, productIdCStr);
 
@@ -159,7 +158,7 @@ void GooglePlayStoreBackend::registerProduct(AbstractProduct * product)
 
 void GooglePlayStoreBackend::purchaseProduct(AbstractProduct * product)
 {
-    QByteArray jsonSkuDetails = QJsonDocument(reinterpret_cast<GooglePlayStoreProduct*>(product)->json()).toJson();
+    QByteArray jsonSkuDetails = QJsonDocument(reinterpret_cast<GooglePlayStoreProduct *>(product)->json()).toJson();
 
     _googlePlayBillingJavaClass->callMethod<void>(
         "purchaseProduct",
@@ -171,8 +170,9 @@ void GooglePlayStoreBackend::purchaseProduct(AbstractProduct * product)
 
 void GooglePlayStoreBackend::consumePurchase(Transaction transaction)
 {
-    qDebug() << "Android consumePurchase called for:" << transaction.orderId << "purchaseToken:" << transaction.purchaseToken;
-    
+    qDebug() << "Android consumePurchase called for:" << transaction.orderId
+             << "purchaseToken:" << transaction.purchaseToken;
+
     // Only call consumeAsync for Consumable products
     AbstractProduct * product = this->product(transaction.productId);
     if (!product) {
@@ -180,17 +180,17 @@ void GooglePlayStoreBackend::consumePurchase(Transaction transaction)
         emit consumePurchaseFailed(transaction);
         return;
     }
-    
+
     // Only consumables need fulfillment
     if (product->productType() != AbstractProduct::Consumable) {
         qDebug() << "Product is not consumable (type:" << product->productType() << "), no fulfillment needed";
         emit consumePurchaseSucceeded(transaction);
         return;
     }
-    
+
     // For consumables, we need to report fulfillment to Google Play Store
     qDebug() << "Android: consumePurchase called for" << transaction.orderId;
-    
+
     _googlePlayBillingJavaClass->callMethod<void>(
         "consumePurchase",
         "(Ljava/lang/String;)V",
@@ -210,7 +210,7 @@ bool GooglePlayStoreBackend::canMakePurchases() const
     return isConnected();
 }
 
-/*static*/ void GooglePlayStoreBackend::purchaseSucceeded(JNIEnv *env, jobject object, jstring message)
+/*static*/ void GooglePlayStoreBackend::purchaseSucceeded(JNIEnv * env, jobject object, jstring message)
 {
     GooglePlayStoreBackend * backend = GooglePlayStoreBackend::s_currentInstance;
     if (!backend) {
@@ -218,7 +218,7 @@ bool GooglePlayStoreBackend::canMakePurchases() const
         return;
     }
 
-    const char* jsonCStr = env->GetStringUTFChars(message, nullptr);
+    const char * jsonCStr = env->GetStringUTFChars(message, nullptr);
     QJsonObject json = QJsonDocument::fromJson(jsonCStr).object();
     env->ReleaseStringUTFChars(message, jsonCStr);
 
@@ -232,7 +232,7 @@ bool GooglePlayStoreBackend::canMakePurchases() const
     emit backend->purchaseSucceeded(transaction);
 }
 
-/*static*/ void GooglePlayStoreBackend::purchasePending(JNIEnv *env, jobject object, jstring message)
+/*static*/ void GooglePlayStoreBackend::purchasePending(JNIEnv * env, jobject object, jstring message)
 {
     GooglePlayStoreBackend * backend = GooglePlayStoreBackend::s_currentInstance;
     if (!backend) {
@@ -240,7 +240,7 @@ bool GooglePlayStoreBackend::canMakePurchases() const
         return;
     }
 
-    const char* jsonCStr = env->GetStringUTFChars(message, nullptr);
+    const char * jsonCStr = env->GetStringUTFChars(message, nullptr);
     QJsonObject json = QJsonDocument::fromJson(jsonCStr).object();
     env->ReleaseStringUTFChars(message, jsonCStr);
 
@@ -252,7 +252,7 @@ bool GooglePlayStoreBackend::canMakePurchases() const
 
     auto transaction = transactionFromJson(json);
     qDebug() << "Android purchase pending for product:" << transaction.productId;
-    
+
     // Find the product and emit a pending signal
     AbstractProduct * product = backend->product(transaction.productId);
     if (product) {
@@ -263,7 +263,7 @@ bool GooglePlayStoreBackend::canMakePurchases() const
     }
 }
 
-/*static*/ void GooglePlayStoreBackend::purchaseRestored(JNIEnv *env, jobject object, jstring message)
+/*static*/ void GooglePlayStoreBackend::purchaseRestored(JNIEnv * env, jobject object, jstring message)
 {
     GooglePlayStoreBackend * backend = GooglePlayStoreBackend::s_currentInstance;
     if (!backend) {
@@ -271,7 +271,7 @@ bool GooglePlayStoreBackend::canMakePurchases() const
         return;
     }
 
-    const char* jsonCStr = env->GetStringUTFChars(message, nullptr);
+    const char * jsonCStr = env->GetStringUTFChars(message, nullptr);
     QJsonObject json = QJsonDocument::fromJson(jsonCStr).object();
     env->ReleaseStringUTFChars(message, jsonCStr);
 
@@ -285,7 +285,8 @@ bool GooglePlayStoreBackend::canMakePurchases() const
     emit backend->purchaseRestored(transaction);
 }
 
-/*static*/ void GooglePlayStoreBackend::purchaseFailed(JNIEnv *env, jobject object, jstring productId, jint billingResponseCode)
+/*static*/ void
+GooglePlayStoreBackend::purchaseFailed(JNIEnv * env, jobject object, jstring productId, jint billingResponseCode)
 {
     GooglePlayStoreBackend * backend = GooglePlayStoreBackend::s_currentInstance;
     if (!backend) {
@@ -293,7 +294,7 @@ bool GooglePlayStoreBackend::canMakePurchases() const
         return;
     }
 
-    const char* productIdCStr = env->GetStringUTFChars(productId, nullptr);
+    const char * productIdCStr = env->GetStringUTFChars(productId, nullptr);
     QString prodId = QString::fromUtf8(productIdCStr);
     env->ReleaseStringUTFChars(productId, productIdCStr);
 
@@ -302,7 +303,7 @@ bool GooglePlayStoreBackend::canMakePurchases() const
     emit backend->purchaseFailed(prodId, static_cast<int>(error), billingResponseCode, message);
 }
 
-/*static*/ void GooglePlayStoreBackend::purchaseConsumed(JNIEnv *env, jobject object, jstring message)
+/*static*/ void GooglePlayStoreBackend::purchaseConsumed(JNIEnv * env, jobject object, jstring message)
 {
     GooglePlayStoreBackend * backend = GooglePlayStoreBackend::s_currentInstance;
     if (!backend) {
@@ -310,7 +311,7 @@ bool GooglePlayStoreBackend::canMakePurchases() const
         return;
     }
 
-    const char* jsonCStr = env->GetStringUTFChars(message, nullptr);
+    const char * jsonCStr = env->GetStringUTFChars(message, nullptr);
     QJsonObject json = QJsonDocument::fromJson(jsonCStr).object();
     env->ReleaseStringUTFChars(message, jsonCStr);
 
@@ -318,7 +319,7 @@ bool GooglePlayStoreBackend::canMakePurchases() const
     emit backend->consumePurchaseSucceeded(transaction);
 }
 
-/*static*/ void GooglePlayStoreBackend::restorePurchasesSucceeded(JNIEnv *env, jobject object, jint count)
+/*static*/ void GooglePlayStoreBackend::restorePurchasesSucceeded(JNIEnv * env, jobject object, jint count)
 {
     GooglePlayStoreBackend * backend = GooglePlayStoreBackend::s_currentInstance;
     if (!backend) {
@@ -330,7 +331,7 @@ bool GooglePlayStoreBackend::canMakePurchases() const
     emit backend->restorePurchasesSucceeded(count);
 }
 
-/*static*/ void GooglePlayStoreBackend::restorePurchasesFailed(JNIEnv *env, jobject object, jint billingResponseCode)
+/*static*/ void GooglePlayStoreBackend::restorePurchasesFailed(JNIEnv * env, jobject object, jint billingResponseCode)
 {
     GooglePlayStoreBackend * backend = GooglePlayStoreBackend::s_currentInstance;
     if (!backend) {
@@ -346,64 +347,65 @@ bool GooglePlayStoreBackend::canMakePurchases() const
     emit backend->restorePurchasesFailed(static_cast<int>(mappedError), billingResponseCode, message);
 }
 
-/*static*/ AbstractStoreBackend::PurchaseError GooglePlayStoreBackend::mapBillingResponseToPurchaseError(int billingResponseCode)
+/*static*/ AbstractStoreBackend::PurchaseError
+GooglePlayStoreBackend::mapBillingResponseToPurchaseError(int billingResponseCode)
 {
     switch (static_cast<BillingResponseCode>(billingResponseCode)) {
-        case USER_CANCELED:
-            return PurchaseError::UserCanceled;
-        case SERVICE_UNAVAILABLE:
-            return PurchaseError::NetworkError;
-        case BILLING_UNAVAILABLE:
-            return PurchaseError::ServiceUnavailable;
-        case ITEM_UNAVAILABLE:
-            return PurchaseError::ItemUnavailable;
-        case ITEM_NOT_OWNED:
-            return PurchaseError::ItemNotOwned;
-        case ITEM_ALREADY_OWNED:
-            return PurchaseError::AlreadyPurchased;
-        case DEVELOPER_ERROR:
-            return PurchaseError::DeveloperError;
-        case FEATURE_NOT_SUPPORTED:
-            return PurchaseError::NotAllowed;
-        case SERVICE_DISCONNECTED:
-            return PurchaseError::ServiceUnavailable;
-        case SERVICE_TIMEOUT:
-            return PurchaseError::NetworkError;
-        case ERROR:
-        default:
-            return PurchaseError::UnknownError;
+    case USER_CANCELED:
+        return PurchaseError::UserCanceled;
+    case SERVICE_UNAVAILABLE:
+        return PurchaseError::NetworkError;
+    case BILLING_UNAVAILABLE:
+        return PurchaseError::ServiceUnavailable;
+    case ITEM_UNAVAILABLE:
+        return PurchaseError::ItemUnavailable;
+    case ITEM_NOT_OWNED:
+        return PurchaseError::ItemNotOwned;
+    case ITEM_ALREADY_OWNED:
+        return PurchaseError::AlreadyPurchased;
+    case DEVELOPER_ERROR:
+        return PurchaseError::DeveloperError;
+    case FEATURE_NOT_SUPPORTED:
+        return PurchaseError::NotAllowed;
+    case SERVICE_DISCONNECTED:
+        return PurchaseError::ServiceUnavailable;
+    case SERVICE_TIMEOUT:
+        return PurchaseError::NetworkError;
+    case ERROR:
+    default:
+        return PurchaseError::UnknownError;
     }
 }
 
 /*static*/ QString GooglePlayStoreBackend::getBillingResponseMessage(int billingResponseCode)
 {
     switch (static_cast<BillingResponseCode>(billingResponseCode)) {
-        case OK:
-            return "Success";
-        case USER_CANCELED:
-            return "User canceled the purchase";
-        case SERVICE_UNAVAILABLE:
-            return "Google Play service is unavailable";
-        case BILLING_UNAVAILABLE:
-            return "Google Play billing is unavailable";
-        case ITEM_UNAVAILABLE:
-            return "The requested item is not available for purchase";
-        case DEVELOPER_ERROR:
-            return "Invalid arguments provided to the API";
-        case ERROR:
-            return "Fatal error during API action";
-        case ITEM_ALREADY_OWNED:
-            return "The user already owns this item";
-        case ITEM_NOT_OWNED:
-            return "The user does not own this item";
-        case FEATURE_NOT_SUPPORTED:
-            return "The requested feature is not supported";
-        case SERVICE_DISCONNECTED:
-            return "Google Play service is disconnected";
-        case SERVICE_TIMEOUT:
-            return "Google Play service timed out";
-        default:
-            return QString("Unknown billing response code: %1").arg(billingResponseCode);
+    case OK:
+        return "Success";
+    case USER_CANCELED:
+        return "User canceled the purchase";
+    case SERVICE_UNAVAILABLE:
+        return "Google Play service is unavailable";
+    case BILLING_UNAVAILABLE:
+        return "Google Play billing is unavailable";
+    case ITEM_UNAVAILABLE:
+        return "The requested item is not available for purchase";
+    case DEVELOPER_ERROR:
+        return "Invalid arguments provided to the API";
+    case ERROR:
+        return "Fatal error during API action";
+    case ITEM_ALREADY_OWNED:
+        return "The user already owns this item";
+    case ITEM_NOT_OWNED:
+        return "The user does not own this item";
+    case FEATURE_NOT_SUPPORTED:
+        return "The requested feature is not supported";
+    case SERVICE_DISCONNECTED:
+        return "Google Play service is disconnected";
+    case SERVICE_TIMEOUT:
+        return "Google Play service timed out";
+    default:
+        return QString("Unknown billing response code: %1").arg(billingResponseCode);
     }
 }
 
@@ -421,25 +423,25 @@ void GooglePlayStoreBackend::enableProcessing()
 void GooglePlayStoreBackend::processQueuedTransactions()
 {
     qDebug() << "Android: Processing" << _queuedPurchaseSucceeded.size() << "queued purchaseSucceeded,"
-             << _queuedPurchaseRestored.size() << "queued purchaseRestored,"
-             << _queuedPurchasePending.size() << "queued purchasePending";
+             << _queuedPurchaseRestored.size() << "queued purchaseRestored," << _queuedPurchasePending.size()
+             << "queued purchasePending";
 
     // Process queued purchase succeeded
-    for (const auto& json : _queuedPurchaseSucceeded) {
+    for (const auto &json : _queuedPurchaseSucceeded) {
         auto transaction = transactionFromJson(json);
         emit purchaseSucceeded(transaction);
     }
     _queuedPurchaseSucceeded.clear();
 
     // Process queued purchase restored
-    for (const auto& json : _queuedPurchaseRestored) {
+    for (const auto &json : _queuedPurchaseRestored) {
         auto transaction = transactionFromJson(json);
         emit purchaseRestored(transaction);
     }
     _queuedPurchaseRestored.clear();
 
     // Process queued purchase pending
-    for (const auto& json : _queuedPurchasePending) {
+    for (const auto &json : _queuedPurchasePending) {
         auto transaction = transactionFromJson(json);
         qDebug() << "Processing queued Android purchase pending for product:" << transaction.productId;
 

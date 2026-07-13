@@ -10,7 +10,7 @@ AbstractProduct::AbstractProduct(QObject * parent) : QObject(parent)
 
 AbstractStoreBackend * AbstractProduct::findStoreBackend() const
 {
-    QObject* p = parent();
+    QObject * p = parent();
     while (p) {
         if (auto * store = qobject_cast<AbstractStoreBackend *>(p))
             return store;
@@ -23,7 +23,7 @@ void AbstractProduct::setDescription(QString value)
 {
     if (_description == value)
         return;
-    
+
     _description = value;
     emit descriptionChanged();
 }
@@ -32,7 +32,7 @@ void AbstractProduct::setIdentifier(const QString &value)
 {
     if (_identifier == value)
         return;
-    
+
     _identifier = value;
     emit identifierChanged();
 }
@@ -41,7 +41,7 @@ void AbstractProduct::setPrice(const QString &value)
 {
     if (_price == value)
         return;
-    
+
     _price = value;
     emit priceChanged();
 }
@@ -50,7 +50,7 @@ void AbstractProduct::setProductType(ProductType type)
 {
     if (_productType == type)
         return;
-    
+
     _productType = type;
     emit productTypeChanged();
 }
@@ -59,7 +59,7 @@ void AbstractProduct::setTitle(const QString &value)
 {
     if (_title == value)
         return;
-    
+
     _title = value;
     emit titleChanged();
 }
@@ -68,7 +68,7 @@ void AbstractProduct::setStatus(ProductStatus status)
 {
     if (_status == status)
         return;
-    
+
     _status = status;
     qDebug() << "Product" << _identifier << _status;
     emit statusChanged();
@@ -78,20 +78,20 @@ void AbstractProduct::setMicrosoftStoreId(const QString &value)
 {
     if (_microsoftStoreId == value)
         return;
-    
+
     _microsoftStoreId = value;
     emit microsoftStoreIdChanged();
 }
 
 void AbstractProduct::registerInStore()
 {
-    auto* store = findStoreBackend();
+    auto * store = findStoreBackend();
     if (!store) {
         qCritical() << "Product not child of a store backend!";
         return;
     }
 
-    if(!store->isConnected()) {
+    if (!store->isConnected()) {
         qDebug() << "No connection to store - will register when connected";
         return;
     }
@@ -123,13 +123,13 @@ void AbstractProduct::updateIsReadyForRegister()
 
 void AbstractProduct::purchase()
 {
-    auto* store = findStoreBackend();
+    auto * store = findStoreBackend();
     if (!store) {
         qCritical() << "Product not child of a store backend!";
         return;
     }
 
-    if(!store->isConnected()) {
+    if (!store->isConnected()) {
         qWarning() << "Cannot purchase - store not connected";
         return;
     }

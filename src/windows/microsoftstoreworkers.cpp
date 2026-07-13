@@ -22,14 +22,14 @@ void StoreProductQueryWorker::performQuery()
     try {
         // Create StoreContext in worker thread
         auto storeContext = StoreContext::GetDefault();
-        
+
         // Initialize with window handle
         auto initWindow = storeContext.as<IInitializeWithWindow>();
         initWindow->Initialize(_hwnd);
-        
+
         // Use Microsoft Store ID if available, otherwise use identifier
         QString storeId = _productId;
-        
+
 #ifdef Q_OS_WIN
         // Check if this looks like a Store ID (has dots) vs a simple identifier
         if (!_productId.contains('.')) {
@@ -38,13 +38,13 @@ void StoreProductQueryWorker::performQuery()
             qDebug() << "Using product identifier as Store ID:" << _productId;
         }
 #endif
-        
+
         // Query for specific product
-        std::vector<winrt::hstring> productKinds = { L"Durable", L"UnmanagedConsumable" };
-        std::vector<winrt::hstring> productIds = { winrt::hstring(storeId.toStdWString()) };
-        
+        std::vector<winrt::hstring> productKinds = {L"Durable", L"UnmanagedConsumable"};
+        std::vector<winrt::hstring> productIds = {winrt::hstring(storeId.toStdWString())};
+
         auto result = storeContext.GetStoreProductsAsync(std::move(productKinds), std::move(productIds)).get();
-        
+
         if (!result.ExtendedError()) {
             auto products = result.Products();
 
@@ -67,10 +67,11 @@ void StoreProductQueryWorker::performQuery()
             }
         } else {
             uint32_t hresult = result.ExtendedError().value;
-            qWarning() << "Store query error for product" << _productId << "- HRESULT:" << Qt::hex << Qt::showbase << hresult;
+            qWarning() << "Store query error for product" << _productId << "- HRESULT:" << Qt::hex << Qt::showbase
+                       << hresult;
             emit queryFailed(hresult, QString("Store API error: 0x%1").arg(hresult, 0, 16));
         }
-    } catch (const winrt::hresult_error& e) {
+    } catch (const winrt::hresult_error &e) {
         uint32_t hresult = static_cast<uint32_t>(e.code().value);
         QString message = QString::fromWCharArray(e.message().c_str());
         qWarning() << "Exception in product query:" << message << "HRESULT:" << Qt::hex << Qt::showbase << hresult;
@@ -79,7 +80,7 @@ void StoreProductQueryWorker::performQuery()
         qWarning() << "Unknown exception in product query";
         emit queryFailed(0x80004005, "Unknown exception");
     }
-    
+
     emit finished();
 }
 
@@ -88,24 +89,23 @@ void StorePurchaseWorker::performPurchase()
     try {
         // Create StoreContext in worker thread
         auto storeContext = StoreContext::GetDefault();
-        
+
         // Initialize with window handle
         auto initWindow = storeContext.as<IInitializeWithWindow>();
         initWindow->Initialize(_hwnd);
-        
+
         // Synchronous purchase call
-        auto result = storeContext.RequestPurchaseAsync(
-            winrt::hstring(_productId.toStdWString())).get();
-        
+        auto result = storeContext.RequestPurchaseAsync(winrt::hstring(_productId.toStdWString())).get();
+
         emit purchaseComplete(result.Status());
-    } catch (const winrt::hresult_error& e) {
+    } catch (const winrt::hresult_error &e) {
         qWarning() << "Purchase HRESULT error:" << QString::fromWCharArray(e.message().c_str());
         emit purchaseComplete(StorePurchaseStatus::ServerError);
     } catch (...) {
         qWarning() << "Unknown exception during purchase";
         emit purchaseComplete(StorePurchaseStatus::ServerError);
     }
-    
+
     emit finished();
 }
 
@@ -120,7 +120,7 @@ void StoreRestoreWorker::performRestore()
         initWindow->Initialize(_hwnd);
 
         // Get user's product collection
-        std::vector<winrt::hstring> productKinds = { L"Durable", L"UnmanagedConsumable" };
+        std::vector<winrt::hstring> productKinds = {L"Durable", L"UnmanagedConsumable"};
         auto result = storeContext.GetUserCollectionAsync(std::move(productKinds)).get();
 
         QList<QVariantMap> restoredProducts;
@@ -128,7 +128,7 @@ void StoreRestoreWorker::performRestore()
         if (!result.ExtendedError()) {
             auto products = result.Products();
 
-            for (auto const& item : products) {
+            for (auto const &item : products) {
                 auto storeProduct = item.Value();
 
                 QVariantMap productData;
@@ -145,7 +145,7 @@ void StoreRestoreWorker::performRestore()
             qWarning() << "Windows Store restore error - HRESULT:" << Qt::hex << Qt::showbase << hresult;
             emit restoreFailed(hresult, QString("Windows Store API error: 0x%1").arg(hresult, 0, 16));
         }
-    } catch (const winrt::hresult_error& e) {
+    } catch (const winrt::hresult_error &e) {
         uint32_t errorCode = static_cast<uint32_t>(e.code().value);
         QString message = QString::fromWCharArray(e.message().c_str());
         qWarning() << "Exception in restore:" << message << "Code:" << Qt::hex << errorCode;
@@ -163,21 +163,21 @@ void StoreAllProductsWorker::performQuery()
     try {
         // Create StoreContext in worker thread
         auto storeContext = StoreContext::GetDefault();
-        
+
         // Initialize with window handle
         auto initWindow = storeContext.as<IInitializeWithWindow>();
         initWindow->Initialize(_hwnd);
-        
+
         // Query all associated products
-        std::vector<winrt::hstring> productKinds = { L"Durable", L"UnmanagedConsumable" };
+        std::vector<winrt::hstring> productKinds = {L"Durable", L"UnmanagedConsumable"};
         auto result = storeContext.GetAssociatedStoreProductsAsync(std::move(productKinds)).get();
-        
+
         QList<QVariantMap> products;
-        
+
         if (!result.ExtendedError()) {
             auto storeProducts = result.Products();
 
-            for (auto const& item : storeProducts) {
+            for (auto const &item : storeProducts) {
                 auto storeProduct = item.Value();
 
                 QVariantMap productData;
@@ -198,7 +198,7 @@ void StoreAllProductsWorker::performQuery()
             qWarning() << "Error querying all products - HRESULT:" << Qt::hex << Qt::showbase << hresult;
             emit queryFailed(hresult, QString("Store API error: 0x%1").arg(hresult, 0, 16));
         }
-    } catch (const winrt::hresult_error& e) {
+    } catch (const winrt::hresult_error &e) {
         uint32_t hresult = static_cast<uint32_t>(e.code().value);
         QString message = QString::fromWCharArray(e.message().c_str());
         qWarning() << "Exception querying all products:" << message << "HRESULT:" << Qt::hex << Qt::showbase << hresult;
@@ -207,7 +207,7 @@ void StoreAllProductsWorker::performQuery()
         qWarning() << "Unknown exception querying all products";
         emit queryFailed(0x80004005, "Unknown exception");
     }
-    
+
     emit finished();
 }
 
@@ -216,55 +216,56 @@ void StoreConsumableFulfillmentWorker::performFulfillment()
     try {
         // Create StoreContext in worker thread
         auto storeContext = StoreContext::GetDefault();
-        
+
         // Initialize with window handle
         auto initWindow = storeContext.as<IInitializeWithWindow>();
         initWindow->Initialize(_hwnd);
-        
+
         // Generate unique tracking ID
         winrt::guid trackingGuid = winrt::Windows::Foundation::GuidHelper::CreateNewGuid();
-        
-        qDebug() << "Reporting consumable fulfillment for Store ID:" << _storeId
-                 << "Quantity:" << _quantity
+
+        qDebug() << "Reporting consumable fulfillment for Store ID:" << _storeId << "Quantity:" << _quantity
                  << "Tracking ID:" << QString::fromWCharArray(winrt::to_hstring(trackingGuid).c_str());
-        
+
         // Report fulfillment
-        auto result = storeContext.ReportConsumableFulfillmentAsync(
-            winrt::hstring(_storeId.toStdWString()),
-            _quantity,
-            trackingGuid
-        ).get();
-        
+        auto result =
+            storeContext
+                .ReportConsumableFulfillmentAsync(winrt::hstring(_storeId.toStdWString()), _quantity, trackingGuid)
+                .get();
+
         switch (result.Status()) {
-            case StoreConsumableStatus::Succeeded:
-                qDebug() << "Consumable fulfillment succeeded, balance:" << result.BalanceRemaining();
-                emit fulfillmentSucceeded();
-                break;
-            case StoreConsumableStatus::InsufficentQuantity:
-                qWarning() << "Consumable fulfillment failed: Insufficient quantity";
-                emit fulfillmentFailed(static_cast<uint32_t>(StoreConsumableStatus::InsufficentQuantity), "Insufficient quantity");
-                break;
-            case StoreConsumableStatus::NetworkError:
-                qWarning() << "Consumable fulfillment failed: Network error";
-                emit fulfillmentFailed(static_cast<uint32_t>(StoreConsumableStatus::NetworkError), "Network error");
-                break;
-            case StoreConsumableStatus::ServerError:
-                qWarning() << "Consumable fulfillment failed: Server error";
-                emit fulfillmentFailed(static_cast<uint32_t>(StoreConsumableStatus::ServerError), "Server error");
-                break;
-            default:
-                qWarning() << "Consumable fulfillment failed: Unknown error";
-                emit fulfillmentFailed(0x80004005, "Unknown fulfillment status");
+        case StoreConsumableStatus::Succeeded:
+            qDebug() << "Consumable fulfillment succeeded, balance:" << result.BalanceRemaining();
+            emit fulfillmentSucceeded();
+            break;
+        case StoreConsumableStatus::InsufficentQuantity:
+            qWarning() << "Consumable fulfillment failed: Insufficient quantity";
+            emit fulfillmentFailed(
+                static_cast<uint32_t>(StoreConsumableStatus::InsufficentQuantity), "Insufficient quantity"
+            );
+            break;
+        case StoreConsumableStatus::NetworkError:
+            qWarning() << "Consumable fulfillment failed: Network error";
+            emit fulfillmentFailed(static_cast<uint32_t>(StoreConsumableStatus::NetworkError), "Network error");
+            break;
+        case StoreConsumableStatus::ServerError:
+            qWarning() << "Consumable fulfillment failed: Server error";
+            emit fulfillmentFailed(static_cast<uint32_t>(StoreConsumableStatus::ServerError), "Server error");
+            break;
+        default:
+            qWarning() << "Consumable fulfillment failed: Unknown error";
+            emit fulfillmentFailed(0x80004005, "Unknown fulfillment status");
         }
-    } catch (const winrt::hresult_error& e) {
+    } catch (const winrt::hresult_error &e) {
         uint32_t hresult = static_cast<uint32_t>(e.code().value);
         QString message = QString::fromWCharArray(e.message().c_str());
-        qWarning() << "Exception in consumable fulfillment:" << message << "HRESULT:" << Qt::hex << Qt::showbase << hresult;
+        qWarning() << "Exception in consumable fulfillment:" << message << "HRESULT:" << Qt::hex << Qt::showbase
+                   << hresult;
         emit fulfillmentFailed(hresult, message);
     } catch (...) {
         qWarning() << "Unknown exception in consumable fulfillment";
         emit fulfillmentFailed(0x80004005, "Unknown exception");
     }
-    
+
     emit finished();
 }

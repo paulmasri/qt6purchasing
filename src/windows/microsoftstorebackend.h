@@ -32,13 +32,13 @@ protected:
     void restorePurchasesImpl() override;
 
 private slots:
-    void onProductQuerySucceeded(AbstractProduct * product, const QVariantMap & productData);
-    void onProductQueryFailed(AbstractProduct * product, uint32_t hresult, const QString & message);
+    void onProductQuerySucceeded(AbstractProduct * product, const QVariantMap &productData);
+    void onProductQueryFailed(AbstractProduct * product, uint32_t hresult, const QString &message);
     void onPurchaseComplete(AbstractProduct * product, winrt::Windows::Services::Store::StorePurchaseStatus status);
     void onRestoreSucceeded(const QList<QVariantMap> &restoredProducts);
-    void onRestoreFailed(uint32_t errorCode, const QString & message);
+    void onRestoreFailed(uint32_t errorCode, const QString &message);
     void onAllProductsQueried(const QList<QVariantMap> &products);
-    void onAllProductsQueryFailed(uint32_t hresult, const QString & message);
+    void onAllProductsQueryFailed(uint32_t hresult, const QString &message);
 
 private:
     HWND _hwnd = nullptr;
@@ -49,8 +49,9 @@ private:
     void processRestoredProducts(const QList<QVariantMap> &restoredProducts);
 
     // Queued transaction data
-    struct QueuedPurchase {
-        AbstractProduct* product;
+    struct QueuedPurchase
+    {
+        AbstractProduct * product;
         winrt::Windows::Services::Store::StorePurchaseStatus status;
     };
     QList<QueuedPurchase> _queuedPurchases;

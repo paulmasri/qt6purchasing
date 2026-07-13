@@ -10,14 +10,14 @@
 #import <StoreKit/StoreKit.h>
 
 namespace AppleAppStoreTransactionState {
-    enum State {
-        Purchasing,
-        Purchased,
-        Failed,
-        Restored,
-        Deferred
-    };
-}
+enum State {
+    Purchasing,
+    Purchased,
+    Failed,
+    Restored,
+    Deferred
+};
+} // namespace AppleAppStoreTransactionState
 
 // Helper functions for AppleAppStoreTransaction creation
 static Transaction transactionFromSKTransaction(SKPaymentTransaction * skTransaction)
@@ -25,8 +25,8 @@ static Transaction transactionFromSKTransaction(SKPaymentTransaction * skTransac
     Transaction transaction;
     // For pending transactions, transactionIdentifier is nil - use empty string for now
     // The real identifier will be available when the transaction completes
-    transaction.orderId = skTransaction.transactionIdentifier ? 
-        QString::fromNSString(skTransaction.transactionIdentifier) : QString();
+    transaction.orderId =
+        skTransaction.transactionIdentifier ? QString::fromNSString(skTransaction.transactionIdentifier) : QString();
     transaction.productId = QString::fromNSString(skTransaction.payment.productIdentifier);
     return transaction;
 }
@@ -35,75 +35,75 @@ static Transaction transactionFromSKTransaction(SKPaymentTransaction * skTransac
 static AbstractStoreBackend::PurchaseError mapStoreKitErrorToPurchaseError(int errorCode)
 {
     switch (errorCode) {
-        case SKErrorPaymentCancelled:
-        case SKErrorOverlayCancelled:
-            return AbstractStoreBackend::PurchaseError::UserCanceled;
-        case SKErrorPaymentNotAllowed:
-            return AbstractStoreBackend::PurchaseError::NotAllowed;
-        case SKErrorPaymentInvalid:
-        case SKErrorClientInvalid: // See https://stackoverflow.com/a/10975530/457584
-        case SKErrorInvalidSignature: // Cryptographic signature against promo code is invalid
-            return AbstractStoreBackend::PurchaseError::PaymentInvalid;
-        case SKErrorStoreProductNotAvailable:
-        case SKErrorInvalidOfferPrice:
-            return AbstractStoreBackend::PurchaseError::ItemUnavailable;
-        case SKErrorCloudServiceNetworkConnectionFailed:
-        case SKErrorCloudServiceRevoked:
-            return AbstractStoreBackend::PurchaseError::NetworkError;
-        case SKErrorUnauthorizedRequestData:
-        case SKErrorInvalidOfferIdentifier:
-        case SKErrorMissingOfferParams:
-            return AbstractStoreBackend::PurchaseError::DeveloperError;
-        case SKErrorUnknown:
-        default:
-            return AbstractStoreBackend::PurchaseError::UnknownError;
+    case SKErrorPaymentCancelled:
+    case SKErrorOverlayCancelled:
+        return AbstractStoreBackend::PurchaseError::UserCanceled;
+    case SKErrorPaymentNotAllowed:
+        return AbstractStoreBackend::PurchaseError::NotAllowed;
+    case SKErrorPaymentInvalid:
+    case SKErrorClientInvalid:    // See https://stackoverflow.com/a/10975530/457584
+    case SKErrorInvalidSignature: // Cryptographic signature against promo code is invalid
+        return AbstractStoreBackend::PurchaseError::PaymentInvalid;
+    case SKErrorStoreProductNotAvailable:
+    case SKErrorInvalidOfferPrice:
+        return AbstractStoreBackend::PurchaseError::ItemUnavailable;
+    case SKErrorCloudServiceNetworkConnectionFailed:
+    case SKErrorCloudServiceRevoked:
+        return AbstractStoreBackend::PurchaseError::NetworkError;
+    case SKErrorUnauthorizedRequestData:
+    case SKErrorInvalidOfferIdentifier:
+    case SKErrorMissingOfferParams:
+        return AbstractStoreBackend::PurchaseError::DeveloperError;
+    case SKErrorUnknown:
+    default:
+        return AbstractStoreBackend::PurchaseError::UnknownError;
     }
 }
 
 static QString getStoreKitErrorMessage(int errorCode)
 {
     switch (errorCode) {
-        case SKErrorPaymentCancelled:
-            return "User canceled the payment request";
-        case SKErrorPaymentNotAllowed:
-            return "This device is not allowed to make the payment";
-        case SKErrorPaymentInvalid:
-            return "One of the payment parameters was not recognized by the App Store";
-        case SKErrorClientInvalid:
-            return "The client is not allowed to issue the request";
-        case SKErrorStoreProductNotAvailable:
-            return "The requested product is not available in the store";
-        case SKErrorCloudServiceNetworkConnectionFailed:
-            return "The device could not connect to the network";
-        case SKErrorCloudServiceRevoked:
-            return "The user has revoked permission to use this cloud service";
-        case SKErrorUnknown:
-            return "An unknown error occurred";
-        default:
-            return QString("Unknown StoreKit error code: %1").arg(errorCode);
+    case SKErrorPaymentCancelled:
+        return "User canceled the payment request";
+    case SKErrorPaymentNotAllowed:
+        return "This device is not allowed to make the payment";
+    case SKErrorPaymentInvalid:
+        return "One of the payment parameters was not recognized by the App Store";
+    case SKErrorClientInvalid:
+        return "The client is not allowed to issue the request";
+    case SKErrorStoreProductNotAvailable:
+        return "The requested product is not available in the store";
+    case SKErrorCloudServiceNetworkConnectionFailed:
+        return "The device could not connect to the network";
+    case SKErrorCloudServiceRevoked:
+        return "The user has revoked permission to use this cloud service";
+    case SKErrorUnknown:
+        return "An unknown error occurred";
+    default:
+        return QString("Unknown StoreKit error code: %1").arg(errorCode);
     }
 }
 
 AppleAppStoreBackend * AppleAppStoreBackend::s_currentInstance = nullptr;
 
 // Observer that handles all transactions for the app lifetime
-@interface TransactionObserver : NSObject <SKPaymentTransactionObserver>
-{
-    NSMutableArray<SKPaymentTransaction *> *queuedTransactions;
+@interface TransactionObserver : NSObject <SKPaymentTransactionObserver> {
+    NSMutableArray<SKPaymentTransaction *> * queuedTransactions;
 }
 
-@property (class, readonly) TransactionObserver *shared;
--(NSArray<SKPaymentTransaction *> *)getQueuedTransactions;
--(void)clearQueuedTransactions;
--(void)processTransactions:(NSArray<SKPaymentTransaction *> *)skTransactions;
--(void)processQueuedTransactions;
+@property(class, readonly) TransactionObserver * shared;
+- (NSArray<SKPaymentTransaction *> *)getQueuedTransactions;
+- (void)clearQueuedTransactions;
+- (void)processTransactions:(NSArray<SKPaymentTransaction *> *)skTransactions;
+- (void)processQueuedTransactions;
 
 @end
 
 @implementation TransactionObserver
 
-+ (TransactionObserver *)shared {
-    static TransactionObserver *sharedInstance = nil;
++ (TransactionObserver *)shared
+{
+    static TransactionObserver * sharedInstance = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         sharedInstance = [[self alloc] init];
@@ -111,23 +111,27 @@ AppleAppStoreBackend * AppleAppStoreBackend::s_currentInstance = nullptr;
     return sharedInstance;
 }
 
--(id)init {
+- (id)init
+{
     if (self = [super init]) {
         queuedTransactions = [[NSMutableArray<SKPaymentTransaction *> alloc] init];
     }
     return self;
 }
 
--(NSArray<SKPaymentTransaction *> *)getQueuedTransactions {
+- (NSArray<SKPaymentTransaction *> *)getQueuedTransactions
+{
     return [queuedTransactions copy];
 }
 
--(void)clearQueuedTransactions {
+- (void)clearQueuedTransactions
+{
     [queuedTransactions removeAllObjects];
 }
 
--(void)paymentQueue:(SKPaymentQueue *)queue updatedTransactions:(NSArray<SKPaymentTransaction *> *)transactions {
-    AppleAppStoreBackend* backend = AppleAppStoreBackend::s_currentInstance;
+- (void)paymentQueue:(SKPaymentQueue *)queue updatedTransactions:(NSArray<SKPaymentTransaction *> *)transactions
+{
+    AppleAppStoreBackend * backend = AppleAppStoreBackend::s_currentInstance;
     qDebug() << "TransactionObserver received" << transactions.count << "transactions";
 
     if (!backend) {
@@ -147,56 +151,56 @@ AppleAppStoreBackend * AppleAppStoreBackend::s_currentInstance = nullptr;
     [self processTransactions:transactions];
 }
 
--(void)processTransactions:(NSArray<SKPaymentTransaction *> *)skTransactions {
-    AppleAppStoreBackend* backend = AppleAppStoreBackend::s_currentInstance;
+- (void)processTransactions:(NSArray<SKPaymentTransaction *> *)skTransactions
+{
+    AppleAppStoreBackend * backend = AppleAppStoreBackend::s_currentInstance;
 
     qDebug() << "iOS: processing" << skTransactions.count << "transactions";
     for (SKPaymentTransaction * skTransaction in skTransactions) {
-        qDebug() << "iOS: Processing transaction ID:" << QString::fromNSString(skTransaction.transactionIdentifier) << "state:" << skTransaction.transactionState << "product:" << QString::fromNSString(skTransaction.payment.productIdentifier);
+        qDebug() << "iOS: Processing transaction ID:" << QString::fromNSString(skTransaction.transactionIdentifier)
+                 << "state:" << skTransaction.transactionState
+                 << "product:" << QString::fromNSString(skTransaction.payment.productIdentifier);
         switch (static_cast<AppleAppStoreTransactionState::State>(skTransaction.transactionState)) {
-        case AppleAppStoreTransactionState::Purchasing:
-            {
-                qDebug() << "iOS: Transaction moving to Purchasing state (user presented with iOS payment dialog)";
-            }
-            break;
-        case AppleAppStoreTransactionState::Purchased:
-            {
-                auto transaction = transactionFromSKTransaction(skTransaction);
-                QMetaObject::invokeMethod(backend, "purchaseSucceeded", Qt::AutoConnection, Q_ARG(Transaction, transaction));
-            }
-            break;
-        case AppleAppStoreTransactionState::Failed:
-            {
-                // Extract product ID from the transaction
-                QString productId = QString::fromNSString(skTransaction.payment.productIdentifier);
-                int errorCode = skTransaction.error.code;
-                AbstractStoreBackend::PurchaseError error = mapStoreKitErrorToPurchaseError(errorCode);
-                QString message = getStoreKitErrorMessage(errorCode);
-                QMetaObject::invokeMethod(backend, "purchaseFailed", Qt::AutoConnection,
-                    Q_ARG(QString, productId),
-                    Q_ARG(int, static_cast<int>(error)),
-                    Q_ARG(int, errorCode),
-                    Q_ARG(QString, message));
-            }
-            break;
-        case AppleAppStoreTransactionState::Restored:
-            {
-                auto transaction = transactionFromSKTransaction(skTransaction);
-                QMetaObject::invokeMethod(backend, "purchaseRestored", Qt::AutoConnection, Q_ARG(Transaction, transaction));
-            }
-            break;
-        case AppleAppStoreTransactionState::Deferred:
-            {
-                auto transaction = transactionFromSKTransaction(skTransaction);
-                QMetaObject::invokeMethod(backend, "purchasePending", Qt::AutoConnection, Q_ARG(Transaction, transaction));
-            }
-            break;
+        case AppleAppStoreTransactionState::Purchasing: {
+            qDebug() << "iOS: Transaction moving to Purchasing state (user presented with iOS payment dialog)";
+        } break;
+        case AppleAppStoreTransactionState::Purchased: {
+            auto transaction = transactionFromSKTransaction(skTransaction);
+            QMetaObject::invokeMethod(
+                backend, "purchaseSucceeded", Qt::AutoConnection, Q_ARG(Transaction, transaction)
+            );
+        } break;
+        case AppleAppStoreTransactionState::Failed: {
+            // Extract product ID from the transaction
+            QString productId = QString::fromNSString(skTransaction.payment.productIdentifier);
+            int errorCode = skTransaction.error.code;
+            AbstractStoreBackend::PurchaseError error = mapStoreKitErrorToPurchaseError(errorCode);
+            QString message = getStoreKitErrorMessage(errorCode);
+            QMetaObject::invokeMethod(
+                backend,
+                "purchaseFailed",
+                Qt::AutoConnection,
+                Q_ARG(QString, productId),
+                Q_ARG(int, static_cast<int>(error)),
+                Q_ARG(int, errorCode),
+                Q_ARG(QString, message)
+            );
+        } break;
+        case AppleAppStoreTransactionState::Restored: {
+            auto transaction = transactionFromSKTransaction(skTransaction);
+            QMetaObject::invokeMethod(backend, "purchaseRestored", Qt::AutoConnection, Q_ARG(Transaction, transaction));
+        } break;
+        case AppleAppStoreTransactionState::Deferred: {
+            auto transaction = transactionFromSKTransaction(skTransaction);
+            QMetaObject::invokeMethod(backend, "purchasePending", Qt::AutoConnection, Q_ARG(Transaction, transaction));
+        } break;
         }
     }
 }
 
--(void)processQueuedTransactions {
-    AppleAppStoreBackend* backend = AppleAppStoreBackend::s_currentInstance;
+- (void)processQueuedTransactions
+{
+    AppleAppStoreBackend * backend = AppleAppStoreBackend::s_currentInstance;
     if (!backend) {
         qDebug() << "TransactionObserver: No backend available for processing queued transactions";
         return;
@@ -211,8 +215,9 @@ AppleAppStoreBackend * AppleAppStoreBackend::s_currentInstance = nullptr;
     }
 }
 
--(void)paymentQueue:(SKPaymentQueue *)queue restoreCompletedTransactionsFailedWithError:(NSError *)error {
-    AppleAppStoreBackend* backend = AppleAppStoreBackend::s_currentInstance;
+- (void)paymentQueue:(SKPaymentQueue *)queue restoreCompletedTransactionsFailedWithError:(NSError *)error
+{
+    AppleAppStoreBackend * backend = AppleAppStoreBackend::s_currentInstance;
     if (!backend) {
         qWarning() << "TransactionObserver: Restore failed but no backend available";
         return;
@@ -224,14 +229,19 @@ AppleAppStoreBackend * AppleAppStoreBackend::s_currentInstance = nullptr;
     AbstractStoreBackend::PurchaseError mappedError = mapStoreKitErrorToPurchaseError(errorCode);
     QString message = getStoreKitErrorMessage(errorCode);
 
-    QMetaObject::invokeMethod(backend, "restorePurchasesFailed", Qt::AutoConnection,
+    QMetaObject::invokeMethod(
+        backend,
+        "restorePurchasesFailed",
+        Qt::AutoConnection,
         Q_ARG(int, static_cast<int>(mappedError)),
         Q_ARG(int, errorCode),
-        Q_ARG(QString, message));
+        Q_ARG(QString, message)
+    );
 }
 
--(void)paymentQueueRestoreCompletedTransactionsFinished:(SKPaymentQueue *)queue {
-    AppleAppStoreBackend* backend = AppleAppStoreBackend::s_currentInstance;
+- (void)paymentQueueRestoreCompletedTransactionsFinished:(SKPaymentQueue *)queue
+{
+    AppleAppStoreBackend * backend = AppleAppStoreBackend::s_currentInstance;
     if (!backend) {
         qWarning() << "TransactionObserver: Restore completed but no backend available";
         return;
@@ -240,35 +250,34 @@ AppleAppStoreBackend * AppleAppStoreBackend::s_currentInstance = nullptr;
     int count = backend->restoredPurchasesCount();
     qDebug() << "iOS: Restore purchases completed successfully. Count:" << count;
 
-    QMetaObject::invokeMethod(backend, "restorePurchasesSucceeded", Qt::AutoConnection,
-        Q_ARG(int, count));
+    QMetaObject::invokeMethod(backend, "restorePurchasesSucceeded", Qt::AutoConnection, Q_ARG(int, count));
 }
 
 @end
 
 @interface InAppPurchaseManager : NSObject <SKProductsRequestDelegate>
 
--(id)init;
--(void)requestProductData:(NSString *)identifier;
+- (id)init;
+- (void)requestProductData:(NSString *)identifier;
 
 @end
 
 @implementation InAppPurchaseManager
 
--(id)init {
+- (id)init
+{
     if (self = [super init]) {
         qDebug() << "InAppPurchaseManager: Initialized for product queries only";
     }
     return self;
 }
 
--(void)dealloc
+- (void)dealloc
 {
     // No transaction observer to remove
 }
 
-
--(void)requestProductData:(NSString *)identifier
+- (void)requestProductData:(NSString *)identifier
 {
     qDebug() << "StoreKit: Requesting product data for identifier:" << QString::fromNSString(identifier);
 
@@ -276,18 +285,18 @@ AppleAppStoreBackend * AppleAppStoreBackend::s_currentInstance = nullptr;
     SKProductsRequest * productsRequest = [[SKProductsRequest alloc] initWithProductIdentifiers:productId];
     productsRequest.delegate = self;
 
-    // Check if we're using StoreKit testing
-    #if TARGET_OS_SIMULATOR
-        qDebug() << "StoreKit: Running in iOS Simulator";
-    #else
-        qDebug() << "StoreKit: Running on physical device";
-    #endif
+// Check if we're using StoreKit testing
+#if TARGET_OS_SIMULATOR
+    qDebug() << "StoreKit: Running in iOS Simulator";
+#else
+    qDebug() << "StoreKit: Running on physical device";
+#endif
 
     [productsRequest start];
 }
 
 //SKProductsRequestDelegate
--(void)productsRequest:(SKProductsRequest *)request didReceiveResponse:(SKProductsResponse *)response
+- (void)productsRequest:(SKProductsRequest *)request didReceiveResponse:(SKProductsResponse *)response
 {
     AppleAppStoreBackend * backend = AppleAppStoreBackend::s_currentInstance;
     if (!backend) {
@@ -295,15 +304,15 @@ AppleAppStoreBackend * AppleAppStoreBackend::s_currentInstance = nullptr;
         return;
     }
 
-    qDebug() << "StoreKit: Received product response; num valid products:" << response.products.count <<
-                "; num invalid product identifiers:" << response.invalidProductIdentifiers.count;
+    qDebug() << "StoreKit: Received product response; num valid products:" << response.products.count
+             << "; num invalid product identifiers:" << response.invalidProductIdentifiers.count;
     if (response.invalidProductIdentifiers.count > 0) {
-        for (NSString *invalidId in response.invalidProductIdentifiers) {
+        for (NSString * invalidId in response.invalidProductIdentifiers) {
             qDebug() << "StoreKit: Invalid product ID:" << QString::fromNSString(invalidId);
         }
     }
     if (response.products.count > 0) {
-        for (SKProduct *product in response.products) {
+        for (SKProduct * product in response.products) {
             qDebug() << "StoreKit: Valid product found:" << QString::fromNSString(product.productIdentifier);
         }
     }
@@ -318,11 +327,13 @@ AppleAppStoreBackend * AppleAppStoreBackend::s_currentInstance = nullptr;
             backend->product(QString::fromNSString(invalidId))->setStatus(AbstractProduct::Unknown);
     } else {
         //Valid product query
-        AppleAppStoreProduct * product = reinterpret_cast<AppleAppStoreProduct*>( backend->product(QString::fromNSString(skProduct.productIdentifier)) );
+        AppleAppStoreProduct * product = reinterpret_cast<AppleAppStoreProduct *>(
+            backend->product(QString::fromNSString(skProduct.productIdentifier))
+        );
 
         if (product) {
             // formatting price string
-            NSNumberFormatter *numberFormatter = [[NSNumberFormatter alloc] init];
+            NSNumberFormatter * numberFormatter = [[NSNumberFormatter alloc] init];
             [numberFormatter setFormatterBehavior:NSNumberFormatterBehavior10_4];
             [numberFormatter setNumberStyle:NSNumberFormatterCurrencyStyle];
             [numberFormatter setLocale:skProduct.priceLocale];
@@ -334,7 +345,9 @@ AppleAppStoreBackend * AppleAppStoreBackend::s_currentInstance = nullptr;
             product->setTitle(QString::fromNSString(skProduct.localizedTitle));
             product->setStatus(AbstractProduct::Registered);
 
-            QMetaObject::invokeMethod(backend, "productRegistered", Qt::AutoConnection, Q_ARG(AbstractProduct*, product));
+            QMetaObject::invokeMethod(
+                backend, "productRegistered", Qt::AutoConnection, Q_ARG(AbstractProduct *, product)
+            );
         } else {
         }
     }
@@ -348,7 +361,7 @@ AppleAppStoreBackend::AppleAppStoreBackend(QObject * parent) : AbstractStoreBack
     s_currentInstance = this;
 
     // Track restored purchases count for restoration completion reporting
-    connect(this, &AppleAppStoreBackend::purchaseRestored, this, [this](Transaction transaction){
+    connect(this, &AppleAppStoreBackend::purchaseRestored, this, [this](Transaction transaction) {
         _restoredPurchasesCount++;
     });
 
@@ -382,7 +395,7 @@ void AppleAppStoreBackend::registerProduct(AbstractProduct * product)
 
 void AppleAppStoreBackend::purchaseProduct(AbstractProduct * product)
 {
-    SKProduct * skProduct = reinterpret_cast<AppleAppStoreProduct*>(product)->nativeProduct();
+    SKProduct * skProduct = reinterpret_cast<AppleAppStoreProduct *>(product)->nativeProduct();
 
     SKPayment * payment = [SKPayment paymentWithProduct:skProduct];
     [[SKPaymentQueue defaultQueue] addPayment:payment];
@@ -391,12 +404,12 @@ void AppleAppStoreBackend::purchaseProduct(AbstractProduct * product)
 void AppleAppStoreBackend::consumePurchase(Transaction transaction)
 {
     qDebug() << "iOS: consumePurchase called for" << transaction.orderId;
-    
+
     // Look up the SKPaymentTransaction using orderId (transactionIdentifier)
-    NSString *identifier = transaction.orderId.toNSString();
+    NSString * identifier = transaction.orderId.toNSString();
     BOOL found = NO;
-    
-    for (SKPaymentTransaction *skTransaction in [[SKPaymentQueue defaultQueue] transactions]) {
+
+    for (SKPaymentTransaction * skTransaction in [[SKPaymentQueue defaultQueue] transactions]) {
         if ([skTransaction.transactionIdentifier isEqualToString:identifier]) {
             [[SKPaymentQueue defaultQueue] finishTransaction:skTransaction];
             emit consumePurchaseSucceeded(transaction);
@@ -404,7 +417,7 @@ void AppleAppStoreBackend::consumePurchase(Transaction transaction)
             break;
         }
     }
-    
+
     if (!found) {
         qWarning() << "iOS: Transaction not found in queue for orderId:" << transaction.orderId;
         emit consumePurchaseFailed(transaction);

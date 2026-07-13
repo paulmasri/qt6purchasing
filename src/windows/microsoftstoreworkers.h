@@ -15,8 +15,7 @@ class StoreWorker : public QObject
 {
     Q_OBJECT
 public:
-    explicit StoreWorker(HWND hwnd, QObject *parent = nullptr) 
-        : QObject(parent), _hwnd(hwnd) {}
+    explicit StoreWorker(HWND hwnd, QObject * parent = nullptr) : QObject(parent), _hwnd(hwnd) {}
 
 protected:
     HWND _hwnd;
@@ -27,8 +26,7 @@ class StoreProductQueryWorker : public StoreWorker
 {
     Q_OBJECT
 public:
-    StoreProductQueryWorker(const QString &productId, HWND hwnd)
-        : StoreWorker(hwnd, nullptr), _productId(productId) {}
+    StoreProductQueryWorker(const QString &productId, HWND hwnd) : StoreWorker(hwnd, nullptr), _productId(productId) {}
 
 public slots:
     void performQuery();
@@ -47,8 +45,7 @@ class StorePurchaseWorker : public StoreWorker
 {
     Q_OBJECT
 public:
-    StorePurchaseWorker(const QString &productId, HWND hwnd)
-        : StoreWorker(hwnd, nullptr), _productId(productId) {}
+    StorePurchaseWorker(const QString &productId, HWND hwnd) : StoreWorker(hwnd, nullptr), _productId(productId) {}
 
 public slots:
     void performPurchase();
@@ -66,15 +63,14 @@ class StoreRestoreWorker : public StoreWorker
 {
     Q_OBJECT
 public:
-    explicit StoreRestoreWorker(HWND hwnd)
-        : StoreWorker(hwnd, nullptr) {}
+    explicit StoreRestoreWorker(HWND hwnd) : StoreWorker(hwnd, nullptr) {}
 
 public slots:
     void performRestore();
 
 signals:
     void restoreSucceeded(const QList<QVariantMap> &restoredProducts);
-    void restoreFailed(uint32_t errorCode, const QString & message);
+    void restoreFailed(uint32_t errorCode, const QString &message);
     void finished();
 };
 
@@ -83,8 +79,7 @@ class StoreAllProductsWorker : public StoreWorker
 {
     Q_OBJECT
 public:
-    explicit StoreAllProductsWorker(HWND hwnd)
-        : StoreWorker(hwnd, nullptr) {}
+    explicit StoreAllProductsWorker(HWND hwnd) : StoreWorker(hwnd, nullptr) {}
 
 public slots:
     void performQuery();
@@ -100,8 +95,11 @@ class StoreConsumableFulfillmentWorker : public StoreWorker
 {
     Q_OBJECT
 public:
-    StoreConsumableFulfillmentWorker(const QString &storeId, uint32_t quantity, HWND hwnd)
-        : StoreWorker(hwnd, nullptr), _storeId(storeId), _quantity(quantity) {}
+    StoreConsumableFulfillmentWorker(const QString &storeId, uint32_t quantity, HWND hwnd) :
+        StoreWorker(hwnd, nullptr),
+        _storeId(storeId),
+        _quantity(quantity)
+    {}
 
 public slots:
     void performFulfillment();
