@@ -15,9 +15,12 @@ if [[ ! -f $COMPILE_COMMANDS ]]; then
     exit 1
 fi
 
+# Restrict processed translation units to project sources under src/, so Qt's
+# generated files in build/ (moc, rcc, qmltyperegistrations) are not linted.
 run-clang-tidy \
     -p "${BUILD_FOLDER}/" \
     -header-filter "^${MATCHER}$" \
+    -source-filter "^${MATCHER}$" \
     -use-color \
     "$@"
 
