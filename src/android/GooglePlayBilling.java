@@ -54,12 +54,14 @@ public class GooglePlayBilling {
                         } else {
                             // Unhandled purchase state - treat as unknown error
                             debugMessage("Unhandled purchase state: " + purchase.getPurchaseState());
-                            String productId = pendingProductId != null ? pendingProductId : "unknown";
+                            // Product id is available directly from the purchase
+                            List<String> skus = purchase.getSkus();
+                            String productId = !skus.isEmpty() ? skus.get(0) : "unknown";
                             purchaseFailed(productId, BillingResponseCode.ERROR);
                         }
                     }
                 } else {
-                    // Failure - use pending product ID
+                    // No purchase object on failure; use the id saved when the purchase began
                     String productId = pendingProductId != null ? pendingProductId : "unknown";
                     pendingProductId = null;  // Clear after use
                     purchaseFailed(productId, billingResult.getResponseCode());
@@ -150,7 +152,7 @@ public class GooglePlayBilling {
             // Extract and store the product ID before launching billing flow
             JSONObject obj = new JSONObject(jsonSkuDetails);
             pendingProductId = obj.getString("productId");
-            
+
             SkuDetails purchaseThis = new SkuDetails(jsonSkuDetails);
 
             BillingFlowParams billingFlowParams = BillingFlowParams.newBuilder()
