@@ -59,13 +59,13 @@ protected:
 
 private:
     void processQueuedTransactions();
+    static PurchaseError mapBillingResponseToPurchaseError(int billingResponseCode);
+    static QString getBillingResponseMessage(int billingResponseCode);
 
     // Queued transaction data
     QList<QJsonObject> _queuedPurchaseSucceeded;
     QList<QJsonObject> _queuedPurchaseRestored;
     QList<QJsonObject> _queuedPurchasePending;
-    static PurchaseError mapBillingResponseToPurchaseError(int billingResponseCode);
-    static QString getBillingResponseMessage(int billingResponseCode);
 
     static GooglePlayStoreBackend * s_currentInstance;
     QJniObject * _googlePlayBillingJavaClass = nullptr;

@@ -26,11 +26,11 @@ public:
     // Static early initialization from main.cpp (before any instances exist)
     static void initializeEarlyTransactionQueue();
 
-    static AppleAppStoreBackend * s_currentInstance;
-
     // Internal access for EarlyTransactionObserver
     InAppPurchaseManager * iapManager() const { return _iapManager; }
     int restoredPurchasesCount() const { return _restoredPurchasesCount; }
+
+    static AppleAppStoreBackend * s_currentInstance;
 
 protected:
     void restorePurchasesImpl() override;

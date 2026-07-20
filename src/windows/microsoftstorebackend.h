@@ -41,27 +41,27 @@ private slots:
     void onAllProductsQueryFailed(uint32_t hresult, const QString &message);
 
 private:
-    HWND _hwnd = nullptr;
-    QMap<QString, AbstractProduct *> _registeredProducts; // Track products by identifier
-
-    void processQueuedTransactions();
-    void processPurchase(AbstractProduct * product, winrt::Windows::Services::Store::StorePurchaseStatus status);
-    void processRestoredProducts(const QList<QVariantMap> &restoredProducts);
-
-    // Queued transaction data
     struct QueuedPurchase
     {
         AbstractProduct * product;
         winrt::Windows::Services::Store::StorePurchaseStatus status;
     };
-    QList<QueuedPurchase> _queuedPurchases;
-    QList<QVariantMap> _queuedRestores;
 
+    void processQueuedTransactions();
+    void processPurchase(AbstractProduct * product, winrt::Windows::Services::Store::StorePurchaseStatus status);
+    void processRestoredProducts(const QList<QVariantMap> &restoredProducts);
     void initializeWindowHandle();
     void queryAllProducts();
     static PurchaseError mapWindowsErrorToPurchaseError(uint32_t errorCode);
     static QString getWindowsErrorMessage(uint32_t errorCode);
     static PurchaseError mapHRESULTToPurchaseError(uint32_t hresult);
+
+    HWND _hwnd = nullptr;
+    QMap<QString, AbstractProduct *> _registeredProducts; // Track products by identifier
+
+    // Queued transaction data
+    QList<QueuedPurchase> _queuedPurchases;
+    QList<QVariantMap> _queuedRestores;
 };
 
 #endif // MICROSOFTSTOREBACKEND_H

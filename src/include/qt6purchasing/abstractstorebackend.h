@@ -64,11 +64,6 @@ public:
 
 protected:
     explicit AbstractStoreBackend(QObject * parent = nullptr);
-    QList<AbstractProduct *> _products;
-    bool _connected = false;
-    bool _canMakePurchases = false;
-    bool _processingEnabled = false;
-    bool _isRestoringPurchases = false;
 
     void setConnected(bool connected);
     void setCanMakePurchases(bool canMakePurchases);
@@ -76,6 +71,12 @@ protected:
 
     // Platform-specific implementation called by restorePurchases()
     virtual void restorePurchasesImpl() = 0;
+
+    QList<AbstractProduct *> _products;
+    bool _connected = false;
+    bool _canMakePurchases = false;
+    bool _processingEnabled = false;
+    bool _isRestoringPurchases = false;
 
 private:
     static void appendProduct(QQmlListProperty<AbstractProduct> * list, AbstractProduct * product);
