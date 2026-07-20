@@ -109,6 +109,10 @@ AbstractStoreBackend::AbstractStoreBackend(QObject * parent) : QObject(parent)
         [this](int error, int platformCode, const QString &message) {
             qDebug() << "restorePurchasesFailed:" << "error=" << error << "platformCode=" << platformCode
                      << "message=" << message;
+            // A Busy failure is a duplicate request rejected while a restore is already
+            // running; it must not clear the flag for the restore still in flight.
+            if (error == static_cast<int>(PurchaseError::Busy))
+                return;
             setIsRestoringPurchases(false);
         }
     );
