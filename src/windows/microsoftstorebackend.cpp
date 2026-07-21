@@ -28,6 +28,16 @@ MicrosoftStoreBackend::MicrosoftStoreBackend(QObject * parent) : AbstractStoreBa
 
 MicrosoftStoreBackend::~MicrosoftStoreBackend()
 {
+    // Stop and join any in-flight worker threads before the base ~QObject
+    // deletes them as children; deleting a running QThread would abort.
+    const auto workerThreads = _workerThreads;
+    if (!workerThreads.isEmpty())
+        qDebug() << "Joining" << workerThreads.size() << "in-flight worker thread(s) before teardown";
+    for (QThread * thread : workerThreads) {
+        thread->quit();
+        thread->wait();
+    }
+
     if (s_currentInstance == this)
         s_currentInstance = nullptr;
 
@@ -100,6 +110,7 @@ void MicrosoftStoreBackend::registerProduct(AbstractProduct * product)
     connect(thread, &QThread::finished, thread, &QThread::deleteLater);
     connect(worker, &StoreProductQueryWorker::finished, worker, &StoreProductQueryWorker::deleteLater);
 
+    trackWorkerThread(thread);
     thread->start();
 }
 
@@ -154,6 +165,7 @@ void MicrosoftStoreBackend::purchaseProduct(AbstractProduct * product)
     connect(thread, &QThread::finished, thread, &QThread::deleteLater);
     connect(worker, &StorePurchaseWorker::finished, worker, &StorePurchaseWorker::deleteLater);
 
+    trackWorkerThread(thread);
     thread->start();
 }
 
@@ -243,6 +255,7 @@ void MicrosoftStoreBackend::consumePurchase(Transaction transaction)
         worker, &StoreConsumableFulfillmentWorker::finished, worker, &StoreConsumableFulfillmentWorker::deleteLater
     );
 
+    trackWorkerThread(thread);
     thread->start();
 }
 
@@ -298,6 +311,7 @@ void MicrosoftStoreBackend::restorePurchasesImpl()
     connect(thread, &QThread::finished, thread, &QThread::deleteLater);
     connect(worker, &StoreRestoreWorker::finished, worker, &StoreRestoreWorker::deleteLater);
 
+    trackWorkerThread(thread);
     thread->start();
 }
 
@@ -523,7 +537,18 @@ void MicrosoftStoreBackend::queryAllProducts()
     connect(thread, &QThread::finished, thread, &QThread::deleteLater);
     connect(worker, &StoreAllProductsWorker::finished, worker, &StoreAllProductsWorker::deleteLater);
 
+    trackWorkerThread(thread);
     thread->start();
+}
+
+void MicrosoftStoreBackend::trackWorkerThread(QThread * thread)
+{
+    // Tracked on the main thread only; drop from the registry when the thread
+    // finishes naturally so teardown only waits on threads still running.
+    _workerThreads.append(thread);
+    connect(thread, &QThread::finished, this, [this, thread]() {
+        _workerThreads.removeOne(thread);
+    });
 }
 
 AbstractStoreBackend::PurchaseError MicrosoftStoreBackend::mapWindowsErrorToPurchaseError(uint32_t statusCode)

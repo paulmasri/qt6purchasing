@@ -8,6 +8,8 @@
 #include <windows.h>
 #include <winrt/Windows.Services.Store.h>
 
+class QThread;
+
 class MicrosoftStoreBackend : public AbstractStoreBackend
 {
     Q_OBJECT
@@ -52,6 +54,7 @@ private:
     void processRestoredProducts(const QList<QVariantMap> &restoredProducts);
     void initializeWindowHandle();
     void queryAllProducts();
+    void trackWorkerThread(QThread * thread);
     static PurchaseError mapWindowsErrorToPurchaseError(uint32_t errorCode);
     static QString getWindowsErrorMessage(uint32_t errorCode);
     static PurchaseError mapHRESULTToPurchaseError(uint32_t hresult);
@@ -62,6 +65,9 @@ private:
     // Queued transaction data
     QList<QueuedPurchase> _queuedPurchases;
     QList<QVariantMap> _queuedRestores;
+
+    // Worker threads tracked so teardown can join any still running
+    QList<QThread *> _workerThreads;
 };
 
 #endif // MICROSOFTSTOREBACKEND_H
