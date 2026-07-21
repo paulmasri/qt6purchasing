@@ -190,6 +190,11 @@ The `microsoftStoreId` should be the exact Store ID from your Microsoft Partner 
 
 The library automatically handles consumable fulfillment for Microsoft Store. When you call `store.finalize(transaction)` on a consumable purchase, the library reports fulfillment to Microsoft Store with a unique tracking ID, allowing the user to repurchase the same consumable.
 
+### Store Lifetime
+
+Any Store operations that are in progress when `Store` is unloaded block its teardown until they complete. Most are short (0.1 - 2s), but for a purchase, 
+the Microsoft Store payment dialog blocks teardown indefinitely, until the user dismisses it. Keeping the `Store` alive for the application's lifetime is recommended.
+
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Cross-Platform Transaction Processing Control (Critical)
