@@ -28,8 +28,7 @@ MicrosoftStoreBackend::MicrosoftStoreBackend(QObject * parent) : AbstractStoreBa
 
 MicrosoftStoreBackend::~MicrosoftStoreBackend()
 {
-    // Stop and join any in-flight worker threads before the base ~QObject
-    // deletes them as children; deleting a running QThread would abort.
+    // Safely end all in-flight worker threads before the base ~QObject.
     const auto workerThreads = _workerThreads;
     if (!workerThreads.isEmpty())
         qDebug() << "Joining" << workerThreads.size() << "in-flight worker thread(s) before teardown";
@@ -543,8 +542,7 @@ void MicrosoftStoreBackend::queryAllProducts()
 
 void MicrosoftStoreBackend::trackWorkerThread(QThread * thread)
 {
-    // Tracked on the main thread only; drop from the registry when the thread
-    // finishes naturally so teardown only waits on threads still running.
+    // Tracked on the main thread only
     _workerThreads.append(thread);
     connect(thread, &QThread::finished, this, [this, thread]() {
         _workerThreads.removeOne(thread);

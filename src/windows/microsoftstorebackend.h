@@ -66,7 +66,7 @@ private:
     QList<QueuedPurchase> _queuedPurchases;
     QList<QVariantMap> _queuedRestores;
 
-    // Worker threads tracked so teardown can join any still running
+    // Registry of worker threads, for well-managed behaviour during teardown
     QList<QThread *> _workerThreads;
 };
 
