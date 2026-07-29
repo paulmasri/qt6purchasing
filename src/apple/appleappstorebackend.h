@@ -1,14 +1,15 @@
 #ifndef APPLEAPPSTOREBACKEND_H
 #define APPLEAPPSTOREBACKEND_H
 
-#include "../abstractstorebackend.h"
+#include <qt6purchasing/abstractstorebackend.h>
 
-Q_FORWARD_DECLARE_OBJC_CLASS(QT_MANGLE_NAMESPACE(InAppPurchaseManager));
-
-QT_BEGIN_NAMESPACE
+Q_FORWARD_DECLARE_OBJC_CLASS(InAppPurchaseManager);
 
 class AppleAppStoreBackend : public AbstractStoreBackend
 {
+    Q_OBJECT
+    QML_NAMED_ELEMENT(Store)
+
 public:
     AppleAppStoreBackend(QObject * parent = nullptr);
     ~AppleAppStoreBackend();
@@ -16,13 +17,27 @@ public:
     void startConnection() override;
     void registerProduct(AbstractProduct * product) override;
     void purchaseProduct(AbstractProduct * product) override;
-    void consumePurchase(AbstractTransaction * transaction) override;
+    void consumePurchase(Transaction transaction) override;
+    bool canMakePurchases() const override;
 
-    //    void emitProductRegistered(AbstractProduct * product);
+    // Transaction processing control
+    void enableProcessing() override;
+
+    // Static early initialization from main.cpp (before any instances exist)
+    static void initializeEarlyTransactionQueue();
+
+    // Internal access for EarlyTransactionObserver
+    InAppPurchaseManager * iapManager() const { return _iapManager; }
+    int restoredPurchasesCount() const { return _restoredPurchasesCount; }
+
+    static AppleAppStoreBackend * s_currentInstance;
+
+protected:
+    void restorePurchasesImpl() override;
+
 private:
-    QT_MANGLE_NAMESPACE(InAppPurchaseManager) * _iapManager = nullptr;
+    InAppPurchaseManager * _iapManager = nullptr;
+    int _restoredPurchasesCount = 0;
 };
-
-QT_END_NAMESPACE
 
 #endif // APPLEAPPSTOREBACKEND_H

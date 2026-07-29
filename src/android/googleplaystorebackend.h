@@ -5,11 +5,12 @@
 #include <QCoreApplication>
 #include <QJniEnvironment>
 #include <QJniObject>
-#include "backend/store/abstractstorebackend.h"
+#include <qt6purchasing/abstractstorebackend.h>
 
 class GooglePlayStoreBackend : public AbstractStoreBackend
 {
     Q_OBJECT
+    QML_NAMED_ELEMENT(Store)
 
 public:
     enum BillingResponseCode {
@@ -29,22 +30,44 @@ public:
     Q_ENUM(BillingResponseCode)
 
     explicit GooglePlayStoreBackend(QObject * parent = nullptr);
+    ~GooglePlayStoreBackend();
 
     static void debugMessage(JNIEnv * env, jobject object, jstring message);
     static void billingResponseReceived(JNIEnv * env, jobject object, jint billingResponseCode);
     static void connectedChangedHelper(JNIEnv * env, jobject object, jboolean connected);
     static void productRegistered(JNIEnv * env, jobject object, jstring productJson);
+    static void productRegistrationFailed(JNIEnv * env, jobject object, jstring productId, jint billingResponseCode);
     static void purchaseSucceeded(JNIEnv * env, jobject object, jstring purchaseJson);
+    static void purchasePending(JNIEnv * env, jobject object, jstring purchaseJson);
     static void purchaseRestored(JNIEnv * env, jobject object, jstring purchaseJson);
-    static void purchaseFailed(JNIEnv * env, jobject object, jint billingResponseCode);
+    static void purchaseFailed(JNIEnv * env, jobject object, jstring productId, jint billingResponseCode);
     static void purchaseConsumed(JNIEnv * env, jobject object, jstring purchaseJson);
+    static void restorePurchasesSucceeded(JNIEnv * env, jobject object, jint count);
+    static void restorePurchasesFailed(JNIEnv * env, jobject object, jint billingResponseCode);
 
     void startConnection() override;
     void registerProduct(AbstractProduct * product) override;
     void purchaseProduct(AbstractProduct * product) override;
-    void consumePurchase(AbstractTransaction * transaction) override;
+    void consumePurchase(Transaction transaction) override;
+    bool canMakePurchases() const override;
+
+    // Transaction processing control
+    void enableProcessing() override;
+
+protected:
+    void restorePurchasesImpl() override;
 
 private:
+    void processQueuedTransactions();
+    static PurchaseError mapBillingResponseToPurchaseError(int billingResponseCode);
+    static QString getBillingResponseMessage(int billingResponseCode);
+
+    // Queued transaction data
+    QList<QJsonObject> _queuedPurchaseSucceeded;
+    QList<QJsonObject> _queuedPurchaseRestored;
+    QList<QJsonObject> _queuedPurchasePending;
+
+    static GooglePlayStoreBackend * s_currentInstance;
     QJniObject * _googlePlayBillingJavaClass = nullptr;
 };
 

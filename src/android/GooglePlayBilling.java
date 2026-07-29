@@ -19,16 +19,21 @@ public class GooglePlayBilling {
     private static native void connectedChangedHelper(boolean connected);
     private static native void billingResponseReceived(int billingResponseCode);
     private static native void productRegistered(String productJson);
+    private static native void productRegistrationFailed(String productId, int billingResponseCode);
 
     private static native void purchaseSucceeded(String purchaseJson);
+    private static native void purchasePending(String purchaseJson);
     private static native void purchaseRestored(String purchaseJson);
-    private static native void purchaseFailed(int billingResponseCode);
+    private static native void purchaseFailed(String productId, int billingResponseCode);
     private static native void purchaseConsumed(String purchaseJson);
+    private static native void restorePurchasesSucceeded(int count);
+    private static native void restorePurchasesFailed(int billingResponseCode);
 
     private Context context;
     private PurchasesUpdatedListener purchasesUpdatedListener;
     private PurchasesResponseListener purchasesResponseListener;
     private BillingClient billingClient;
+    private String pendingProductId = null;
 
     public GooglePlayBilling(Context cnt) {
         System.out.println("GooglePlayBilling constructor called with context argument " + cnt);
@@ -37,15 +42,29 @@ public class GooglePlayBilling {
         purchasesUpdatedListener = new PurchasesUpdatedListener() {
             public void onPurchasesUpdated(BillingResult billingResult, List<Purchase> purchases) {
                 if (billingResult.getResponseCode() == BillingResponseCode.OK && purchases != null) {
+                    // Success - clear pending and check purchase states
+                    pendingProductId = null;
                     for (Purchase purchase : purchases) {
-                        purchaseSucceeded(purchase.getOriginalJson());
+                        if (purchase.getPurchaseState() == Purchase.PurchaseState.PENDING) {
+                            // Purchase is awaiting approval (e.g., parental approval, payment method verification)
+                            purchasePending(purchase.getOriginalJson());
+                        } else if (purchase.getPurchaseState() == Purchase.PurchaseState.PURCHASED) {
+                            // Purchase completed successfully
+                            purchaseSucceeded(purchase.getOriginalJson());
+                        } else {
+                            // Unhandled purchase state - treat as unknown error
+                            debugMessage("Unhandled purchase state: " + purchase.getPurchaseState());
+                            // Product id is available directly from the purchase
+                            List<String> skus = purchase.getSkus();
+                            String productId = !skus.isEmpty() ? skus.get(0) : "unknown";
+                            purchaseFailed(productId, BillingResponseCode.ERROR);
+                        }
                     }
-                } else if (billingResult.getResponseCode() == BillingResponseCode.USER_CANCELED) {
-                    // Handle an error caused by a user cancelling the purchase flow.
-                    purchaseFailed(billingResult.getResponseCode());
                 } else {
-                    // Handle any other error codes.
-                    purchaseFailed(billingResult.getResponseCode());
+                    // No purchase object on failure; use the id saved when the purchase began
+                    String productId = pendingProductId != null ? pendingProductId : "unknown";
+                    pendingProductId = null;  // Clear after use
+                    purchaseFailed(productId, billingResult.getResponseCode());
                 }
             }
         };
@@ -53,10 +72,18 @@ public class GooglePlayBilling {
         purchasesResponseListener = new PurchasesResponseListener() {
             @Override
             public void onQueryPurchasesResponse(BillingResult billingResult, List<Purchase> purchases) {
-                if (!purchases.isEmpty()) {
-                    for (Purchase purchase : purchases) {
-                        purchaseRestored(purchase.getOriginalJson());
+                if (billingResult.getResponseCode() == BillingResponseCode.OK) {
+                    int count = 0;
+                    if (purchases != null && !purchases.isEmpty()) {
+                        for (Purchase purchase : purchases) {
+                            purchaseRestored(purchase.getOriginalJson());
+                            count++;
+                        }
                     }
+                    restorePurchasesSucceeded(count);
+                } else {
+                    debugMessage("Restore purchases failed with response code: " + billingResult.getResponseCode());
+                    restorePurchasesFailed(billingResult.getResponseCode());
                 }
             }
         };
@@ -103,11 +130,18 @@ public class GooglePlayBilling {
                 @Override
                 public void onSkuDetailsResponse(BillingResult billingResult,
                         List<SkuDetails> skuDetailsList) {
-                    if (skuDetailsList == null)
-//                        throw new NullPointerException("skuDetailsList is null");
-                        return;
-
                     billingResponseReceived(billingResult.getResponseCode());
+
+                    if (billingResult.getResponseCode() != BillingResponseCode.OK) {
+                        productRegistrationFailed(productId, billingResult.getResponseCode());
+                        return;
+                    }
+
+                    if (skuDetailsList == null || skuDetailsList.isEmpty()) {
+                        productRegistrationFailed(productId, BillingResponseCode.OK);
+                        return;
+                    }
+
                     productRegistered(skuDetailsList.get(0).getOriginalJson());
                 }
             });
@@ -115,6 +149,10 @@ public class GooglePlayBilling {
 
     public void purchaseProduct(Activity activity, final String jsonSkuDetails) {
         try {
+            // Extract and store the product ID before launching billing flow
+            JSONObject obj = new JSONObject(jsonSkuDetails);
+            pendingProductId = obj.getString("productId");
+
             SkuDetails purchaseThis = new SkuDetails(jsonSkuDetails);
 
             BillingFlowParams billingFlowParams = BillingFlowParams.newBuilder()
@@ -122,6 +160,7 @@ public class GooglePlayBilling {
                 .build();
             int responseCode = billingClient.launchBillingFlow(activity, billingFlowParams).getResponseCode();
         } catch (JSONException e) {
+            pendingProductId = null;  // Clean up on error
             throw new RuntimeException(e);
         }
     };
@@ -149,5 +188,10 @@ public class GooglePlayBilling {
         } catch (JSONException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public void queryExistingPurchases() {
+        debugMessage("Manual restore purchases triggered - calling queryPurchasesAsync");
+        billingClient.queryPurchasesAsync(SkuType.INAPP, purchasesResponseListener);
     }
 }

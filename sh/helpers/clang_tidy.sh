@@ -18,6 +18,7 @@ fi
 run-clang-tidy \
     -p "${BUILD_FOLDER}/" \
     -header-filter "^${MATCHER}$" \
+    -source-filter "^${MATCHER}$" \
     -use-color \
     "$@"
 

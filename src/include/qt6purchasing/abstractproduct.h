@@ -2,16 +2,24 @@
 #define ABSTRACTPRODUCT_H
 
 #include <QObject>
-#include "abstractstorebackend.h"
+#include <QQmlEngine>
 
-class AbstractTransaction;
+// Forward declaration for AbstractStoreBackend to avoid circular dependency
+class AbstractStoreBackend;
+
+// Need full definition for Transaction due to signal parameters
+#include <qt6purchasing/transaction.h>
 
 class AbstractProduct : public QObject
 {
     Q_OBJECT
+    QML_NAMED_ELEMENT(AbstractProduct)
+    QML_UNCREATABLE("AbstractProduct is an abstract base class")
+
     // writable properties
     Q_PROPERTY(QString identifier READ identifier WRITE setIdentifier NOTIFY identifierChanged REQUIRED)
     Q_PROPERTY(ProductType type READ productType WRITE setProductType NOTIFY productTypeChanged REQUIRED)
+    Q_PROPERTY(QString microsoftStoreId READ microsoftStoreId WRITE setMicrosoftStoreId NOTIFY microsoftStoreIdChanged)
     // read only properties
     Q_PROPERTY(ProductStatus status READ status NOTIFY statusChanged)
     Q_PROPERTY(QString description READ description NOTIFY descriptionChanged)
@@ -20,14 +28,16 @@ class AbstractProduct : public QObject
 
 public:
     enum ProductType {
+        None,
         Consumable,
         Unlockable
     };
     Q_ENUM(ProductType)
     enum ProductStatus {
-        Unitialized,
+        Uninitialized,
         PendingRegistration,
         Registered,
+        IncorrectProductType,
         Unknown
     };
     Q_ENUM(ProductStatus)
@@ -38,6 +48,8 @@ public:
     QString price() const { return _price; }
     ProductType productType() const { return _productType; }
     QString title() const { return _title; }
+    QString microsoftStoreId() const { return _microsoftStoreId; }
+    bool isReadyForRegister() const { return _isReadyForRegister; }
 
     void setIdentifier(const QString &value);
     void setProductType(ProductType type);
@@ -45,6 +57,7 @@ public:
     void setDescription(QString value);
     void setPrice(const QString &value);
     void setTitle(const QString &value);
+    void setMicrosoftStoreId(const QString &value);
 
     void registerInStore();
 
@@ -53,26 +66,36 @@ public:
 protected:
     explicit AbstractProduct(QObject * parent = nullptr);
 
-    ProductStatus _status = ProductStatus::Unitialized;
-    QString _identifier;
-    QString _description;
-    QString _price;
-    ProductType _productType;
-    QString _title;
+    ProductStatus _status = ProductStatus::Uninitialized;
+    QString _identifier = QString();
+    QString _description = QString();
+    QString _price = QString();
+    ProductType _productType = ProductType::None;
+    QString _title = QString();
+    QString _microsoftStoreId = QString();
+
+private:
+    AbstractStoreBackend * findStoreBackend() const;
+    void updateIsReadyForRegister();
+
+    bool _isReadyForRegister = false;
 
 signals:
-    void storeChanged();
     void statusChanged();
     void identifierChanged();
     void descriptionChanged();
     void priceChanged();
     void productTypeChanged();
     void titleChanged();
+    void microsoftStoreIdChanged();
+    void isReadyForRegisterChanged();
 
-    void purchaseSucceeded(AbstractTransaction * transaction);
-    void purchaseFailed(AbstractTransaction * transaction);
-    void purchaseRestored(AbstractTransaction * transaction);
-    void purchaseConsumed(AbstractTransaction * transaction);
+    void purchaseSucceeded(Transaction transaction);
+    void purchasePending(Transaction transaction);
+    void purchaseFailed(int error, int platformCode, const QString &message);
+    void purchaseRestored(Transaction transaction);
+    void consumePurchaseSucceeded(Transaction transaction);
+    void consumePurchaseFailed(Transaction transaction);
 };
 
 #endif // ABSTRACTPRODUCT_H

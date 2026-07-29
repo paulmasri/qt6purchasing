@@ -1,64 +1,121 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.21)
 
-project(store)
+project(qt6purchasing LANGUAGES CXX)
 
-find_package(Qt6 COMPONENTS
+find_package(Qt6 6.8 REQUIRED COMPONENTS
     Core
+    Gui
     Qml
-    REQUIRED
 )
 
+qt_standard_project_setup(REQUIRES 6.8)
+set(QT_QML_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+
+# Platform-specific sources and libraries
+set(PLATFORM_LIBS "")
+set(PLATFORM_SOURCES "")
+set(PLATFORM_HEADERS "")
+set(PLATFORM_INCLUDE "")
+
 if(ANDROID)
-    set(PLATFORM_STORE_SOURCES
+    list(APPEND PLATFORM_SOURCES
         android/googleplaystorebackend.cpp
         android/googleplaystoreproduct.cpp
-        android/googleplaystoretransaction.cpp
     )
-    set(PLATFORM_STORE_HEADERS
-        src/com/climbsmart/crimptronic/GooglePlayBilling.java
+    list(APPEND PLATFORM_HEADERS
         android/googleplaystorebackend.h
         android/googleplaystoreproduct.h
-        android/googleplaystoretransaction.h
+    )
+
+    set(PLATFORM_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR}/android)
+
+    # Add .java file for visibility in Qt Creator (excluded from build process)
+    add_custom_target(GooglePlayJavaSource
+        SOURCES
+            android/GooglePlayBilling.java
     )
 elseif(APPLE)
-    include_directories(/System/Library/Frameworks)
     find_library(FOUNDATIONLIB Foundation)
     find_library(STOREKITLIB StoreKit)
-    set(PLATFORM_STORE_LIBS
+    list(APPEND PLATFORM_LIBS
         ${FOUNDATIONLIB}
         ${STOREKITLIB}
     )
 
-    set(PLATFORM_STORE_SOURCES
+    list(APPEND PLATFORM_SOURCES
         apple/appleappstorebackend.mm
         apple/appleappstoreproduct.mm
-        apple/appleappstoretransaction.mm
     )
-    set(PLATFORM_STORE_HEADERS
+    list(APPEND PLATFORM_HEADERS
         apple/appleappstorebackend.h
         apple/appleappstoreproduct.h
-        apple/appleappstoretransaction.h
     )
+
+    set(PLATFORM_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR}/apple)
+
+    # Ensure ARC is enabled for Objective-C++ files
+    set_source_files_properties(
+        apple/appleappstorebackend.mm
+        apple/appleappstoreproduct.mm
+        PROPERTIES
+        COMPILE_FLAGS "-fobjc-arc"
+    )
+elseif(WIN32)
+    # Windows Runtime libraries for Microsoft Store APIs
+    find_library(WINDOWSAPPLIB WindowsApp)
+    list(APPEND PLATFORM_LIBS ${WINDOWSAPPLIB} oleaut32)
+
+    list(APPEND PLATFORM_SOURCES
+        windows/microsoftstorebackend.cpp
+        windows/microsoftstoreproduct.cpp
+        windows/microsoftstoreworkers.cpp
+    )
+    list(APPEND PLATFORM_HEADERS
+        windows/microsoftstorebackend.h
+        windows/microsoftstoreproduct.h
+        windows/microsoftstoreworkers.h
+    )
+
+    set(PLATFORM_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR}/windows)
 endif()
 
-add_library(store)
-target_include_directories(store PRIVATE ${CMAKE_SOURCE_DIR})
-target_sources(store
-    PRIVATE
-        abstractstorebackend.cpp
-        abstractproduct.cpp
-        abstracttransaction.cpp
-        ${PLATFORM_STORE_SOURCES}
-    PUBLIC
-        abstractstorebackend.h
-        abstractproduct.h
-        abstracttransaction.h
-        ${PLATFORM_STORE_HEADERS}
+# The public-facing library
+set(CORE_SOURCES
+    abstractproduct.cpp
+    abstractstorebackend.cpp
 )
-target_link_libraries(store
+set(CORE_HEADERS
+    include/qt6purchasing/abstractproduct.h
+    include/qt6purchasing/abstractstorebackend.h
+    include/qt6purchasing/transaction.h
+)
+
+qt_add_library(qt6purchasinglib STATIC
+        ${CORE_SOURCES}
+        ${CORE_HEADERS}
+        ${PLATFORM_SOURCES}
+        ${PLATFORM_HEADERS}
+)
+
+
+qt_add_qml_module(qt6purchasinglib
+    URI Qt6Purchasing
+    VERSION 1.0
+)
+
+target_include_directories(qt6purchasinglib
+    PRIVATE
+        ${PLATFORM_INCLUDE}
+		${CMAKE_CURRENT_SOURCE_DIR}/include/qt6purchasing
+    PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+target_link_libraries(qt6purchasinglib
     PRIVATE
         Qt6::Core
+        Qt6::Gui
     PUBLIC
         Qt6::Qml
-        ${PLATFORM_STORE_LIBS}
+        ${PLATFORM_LIBS}
 )

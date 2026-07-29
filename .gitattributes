@@ -1,0 +1,25 @@
+# Enforce LF line endings for all text files
+* text=auto eol=lf
+
+# Explicitly declare text files  
+*.cpp text eol=lf
+*.h text eol=lf
+*.mm text eol=lf
+*.java text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
+*.cmake text eol=lf
+*.in text eol=lf
+CMakeLists.txt text eol=lf
+LICENSE text eol=lf
+README.md text eol=lf
+
+# Windows-specific files that need CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary

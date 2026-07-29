@@ -2,13 +2,14 @@
 #define GOOGLEPLAYSTOREPRODUCT_H
 
 #include <QJsonObject>
-#include "../abstractproduct.h"
+#include <qt6purchasing/abstractproduct.h>
 
 class GooglePlayStoreBackend;
 
 class GooglePlayStoreProduct : public AbstractProduct
 {
     Q_OBJECT
+    QML_NAMED_ELEMENT(Product)
 
 public:
     GooglePlayStoreProduct(QObject * parent = nullptr);

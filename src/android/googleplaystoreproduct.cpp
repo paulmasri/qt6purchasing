@@ -4,6 +4,9 @@ GooglePlayStoreProduct::GooglePlayStoreProduct(QObject * parent) : AbstractProdu
 
 void GooglePlayStoreProduct::setJson(QJsonObject json)
 {
+    if (_json == json)
+        return;
+
     _json = json;
     emit jsonChanged();
 }

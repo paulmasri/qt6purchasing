@@ -1,91 +1,148 @@
-#include "abstractproduct.h"
-#include "abstracttransaction.h"
+#include <qt6purchasing/abstractproduct.h>
+#include <qt6purchasing/abstractstorebackend.h>
 
 AbstractProduct::AbstractProduct(QObject * parent) : QObject(parent)
 {
-    connect(this, &AbstractProduct::identifierChanged, this, &AbstractProduct::registerInStore);
-    connect(this, &AbstractProduct::storeChanged, this, &AbstractProduct::registerInStore);
+    connect(this, &AbstractProduct::identifierChanged, this, &AbstractProduct::updateIsReadyForRegister);
+    connect(this, &AbstractProduct::productTypeChanged, this, &AbstractProduct::updateIsReadyForRegister);
+    connect(this, &AbstractProduct::isReadyForRegisterChanged, this, &AbstractProduct::registerInStore);
+}
+
+AbstractStoreBackend * AbstractProduct::findStoreBackend() const
+{
+    QObject * p = parent();
+    while (p) {
+        if (auto * store = qobject_cast<AbstractStoreBackend *>(p))
+            return store;
+        p = p->parent();
+    }
+    return nullptr;
 }
 
 void AbstractProduct::setDescription(QString value)
 {
+    if (_description == value)
+        return;
+
     _description = value;
     emit descriptionChanged();
 }
 
 void AbstractProduct::setIdentifier(const QString &value)
 {
+    if (_identifier == value)
+        return;
+
     _identifier = value;
     emit identifierChanged();
 }
 
 void AbstractProduct::setPrice(const QString &value)
 {
+    if (_price == value)
+        return;
+
     _price = value;
     emit priceChanged();
 }
 
 void AbstractProduct::setProductType(ProductType type)
 {
+    if (_productType == type)
+        return;
+
     _productType = type;
     emit productTypeChanged();
 }
 
 void AbstractProduct::setTitle(const QString &value)
 {
+    if (_title == value)
+        return;
+
     _title = value;
     emit titleChanged();
 }
 
 void AbstractProduct::setStatus(ProductStatus status)
 {
+    if (_status == status)
+        return;
+
     _status = status;
     qDebug() << "Product" << _identifier << _status;
     emit statusChanged();
 }
 
+void AbstractProduct::setMicrosoftStoreId(const QString &value)
+{
+    if (_microsoftStoreId == value)
+        return;
+
+    _microsoftStoreId = value;
+    emit microsoftStoreIdChanged();
+}
+
 void AbstractProduct::registerInStore()
 {
-    if (!AbstractStoreBackend::instance()) {
-        qCritical() << "Store unavailable!";
+    auto * store = findStoreBackend();
+    if (!store) {
+        qCritical() << "Product not child of a store backend!";
         return;
     }
 
-    if (!AbstractStoreBackend::instance()->isConnected()) {
-        qCritical() << "No connection to store!";
+    if (!store->isConnected()) {
+        qDebug() << "No connection to store - will register when connected";
         return;
     }
 
     if (_identifier.isEmpty()) {
-        qCritical() << "Product has no id!";
+        qDebug() << "Product has no id - skipping registration";
+        return;
+    }
+
+    if (_status == PendingRegistration || _status == Registered) {
+        qDebug() << "Product" << _identifier << "already registered or pending";
         return;
     }
 
     setStatus(AbstractProduct::PendingRegistration);
-    AbstractStoreBackend::instance()->registerProduct(this);
+    store->registerProduct(this);
+}
+
+void AbstractProduct::updateIsReadyForRegister()
+{
+    bool newReadyState = (_productType != ProductType::None) && (!_identifier.isEmpty());
+
+    if (_isReadyForRegister == newReadyState)
+        return;
+
+    _isReadyForRegister = newReadyState;
+    emit isReadyForRegisterChanged();
 }
 
 void AbstractProduct::purchase()
 {
-    if (!AbstractStoreBackend::instance()) {
-        qCritical() << "Store unavailable!";
+    auto * store = findStoreBackend();
+    if (!store) {
+        qCritical() << "Product not child of a store backend!";
         return;
     }
 
-    if (!AbstractStoreBackend::instance()->isConnected()) {
-        qCritical() << "No connection to store!";
+    if (!store->isConnected()) {
+        qWarning() << "Cannot purchase - store not connected";
         return;
     }
 
     if (_identifier.isEmpty()) {
-        qCritical() << "Product has no id!";
+        qWarning() << "Cannot purchase - product has no identifier";
         return;
     }
 
     if (_status != AbstractProduct::Registered) {
-        qDebug() << "Trying to purchase an unregistered Product. Aborting";
+        qWarning() << "Cannot purchase unregistered product:" << _identifier;
         return;
     }
 
-    AbstractStoreBackend::instance()->purchaseProduct(this);
+    store->purchaseProduct(this);
 }
